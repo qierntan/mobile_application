@@ -65,7 +65,7 @@ class _HomeNavigatorState extends State<HomeNavigator> {
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         type: BottomNavigationBarType.fixed,
-        selectedItemColor: Colors.teal,
+        selectedItemColor: Color.fromARGB(255, 178, 72, 249),
         unselectedItemColor: Colors.grey,
         onTap: (index) => setState(() => _currentIndex = index),
         items: const [
