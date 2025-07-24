@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:mobile_application/screens/Vehicle/vehicle_list_screen.dart';
 import 'screens/customer_list_screen.dart';
 
-void main() async{
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
   runApp(const MainApp());
@@ -37,7 +38,7 @@ class _HomeNavigatorState extends State<HomeNavigator> {
     'Customers',
     'Jobs',
     'Inventory',
-    'Settings'
+    'Settings',
   ];
 
   @override
@@ -48,6 +49,9 @@ class _HomeNavigatorState extends State<HomeNavigator> {
     switch (_currentIndex) {
       case 1:
         _selectedScreen = CustomerListScreen();
+        break;
+      case 2:
+        _selectedScreen = VehicleListScreen(); // Placeholder for Jobs
         break;
       default:
         _selectedScreen = Center(
@@ -60,10 +64,7 @@ class _HomeNavigatorState extends State<HomeNavigator> {
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(_titles[_currentIndex]),
-        centerTitle: true,
-      ),
+      appBar: AppBar(title: Text(_titles[_currentIndex]), centerTitle: true),
       body: _selectedScreen,
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
@@ -75,8 +76,14 @@ class _HomeNavigatorState extends State<HomeNavigator> {
           BottomNavigationBarItem(icon: Icon(Icons.dashboard), label: 'Home'),
           BottomNavigationBarItem(icon: Icon(Icons.group), label: 'Customers'),
           BottomNavigationBarItem(icon: Icon(Icons.assignment), label: 'Jobs'),
-          BottomNavigationBarItem(icon: Icon(Icons.inventory), label: 'Inventory'),
-          BottomNavigationBarItem(icon: Icon(Icons.settings), label: 'Settings'),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.inventory),
+            label: 'Inventory',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.settings),
+            label: 'Settings',
+          ),
         ],
       ),
     );
