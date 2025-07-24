@@ -4,11 +4,13 @@ import 'add_vehicle_screen.dart';
 import 'add_service_record_screen.dart';
 
 class VehicleDetailsScreen extends StatelessWidget {
+  final String customerId;
   final String vehicleId;
   final Map<String, dynamic> vehicleData;
 
   const VehicleDetailsScreen({
     Key? key,
+    required this.customerId,
     required this.vehicleId,
     required this.vehicleData,
   }) : super(key: key);
@@ -18,6 +20,14 @@ class VehicleDetailsScreen extends StatelessWidget {
     final Map<String, dynamic>? serviceHistory = vehicleData['service_history'] as Map<String, dynamic>?;
 
     return Scaffold(
+      appBar: AppBar(
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: Colors.white),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: Text('${vehicleData['make']} ${vehicleData['model']} Details'),
+        backgroundColor: Colors.teal,
+      ),
       body: Padding(
         padding: EdgeInsets.all(16.0),
         child: Column(
@@ -75,6 +85,7 @@ class VehicleDetailsScreen extends StatelessWidget {
                       context,
                       MaterialPageRoute(
                         builder: (context) => AddVehicleScreen(
+                          customerId: customerId,
                           vehicleId: vehicleId,
                           vehicleData: vehicleData,
                         ),
@@ -87,6 +98,8 @@ class VehicleDetailsScreen extends StatelessWidget {
                 ElevatedButton(
                   onPressed: () {
                     FirebaseFirestore.instance
+                        .collection('Customer')
+                        .doc(customerId)
                         .collection('vehicles')
                         .doc(vehicleId)
                         .delete()
@@ -109,6 +122,7 @@ class VehicleDetailsScreen extends StatelessWidget {
                   context,
                   MaterialPageRoute(
                     builder: (context) => AddServiceRecordScreen(
+                      customerId: customerId,
                       vehicleId: vehicleId,
                     ),
                   ),
@@ -119,14 +133,6 @@ class VehicleDetailsScreen extends StatelessWidget {
             ),
           ],
         ),
-      ),
-      appBar: AppBar(
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Text('${vehicleData['make']} ${vehicleData['model']} Details'),
-        backgroundColor: Colors.teal,
       ),
     );
   }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:mobile_application/screens/Vehicle/vehicle_list_screen.dart';
 
 class CustomerListScreen extends StatelessWidget {
   const CustomerListScreen({Key? key}) : super(key: key);
@@ -9,7 +10,6 @@ class CustomerListScreen extends StatelessWidget {
     final CollectionReference customers = FirebaseFirestore.instance.collection('Customer');
 
     return Scaffold(
-      appBar: AppBar(title: Text('Customer List')),
       body: StreamBuilder<QuerySnapshot>(
         stream: customers.snapshots(),
         builder: (context, snapshot) {
@@ -31,6 +31,7 @@ class CustomerListScreen extends StatelessWidget {
             itemCount: customerDocs.length,
             itemBuilder: (context, index) {
               var data = customerDocs[index].data() as Map<String, dynamic>;
+              String customerId = customerDocs[index].id;
               String name = data['cusName'] ?? 'No Name';
               String email = data['cusEmail'] ?? 'No Email';
               String phone = data['cusPhone'] ?? 'No Phone';
@@ -43,13 +44,25 @@ class CustomerListScreen extends StatelessWidget {
                   subtitle: Text('📞 $phone\n📧 $email'),
                   isThreeLine: true,
                   onTap: () {
-                    // TODO: Navigate to customer detail screen
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => VehicleListScreen(customerId: customerId, customerName: name),
+                      ),
+                    );
                   },
                 ),
               );
             },
           );
         },
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          // TODO: Navigate to add customer screen if needed
+        },
+        child: Icon(Icons.add),
+        backgroundColor: Colors.teal,
       ),
     );
   }
