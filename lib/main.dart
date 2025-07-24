@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:mobile_application/screens/Vehicle/vehicle_list_screen.dart';
-import 'screens/customer_list_screen.dart';
+import 'package:mobile_application/screens/customer_list_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -17,7 +16,7 @@ class MainApp extends StatelessWidget {
     return MaterialApp(
       title: 'Workshop CRM',
       theme: ThemeData(
-        primaryColor: Color(0xFFE9E0EF),
+        primarySwatch: Colors.teal,
         scaffoldBackgroundColor: Colors.grey[100],
       ),
       home: HomeNavigator(),
@@ -32,7 +31,7 @@ class HomeNavigator extends StatefulWidget {
 }
 
 class _HomeNavigatorState extends State<HomeNavigator> {
-  int _currentIndex = 1;
+  int _currentIndex = 1; // Start on Customers tab
   final List<String> _titles = [
     'Home',
     'Customers',
@@ -45,13 +44,10 @@ class _HomeNavigatorState extends State<HomeNavigator> {
   Widget build(BuildContext context) {
     Widget _selectedScreen;
 
-    // Only load CustomerListScreen, show placeholder for others
+    // Load CustomerListScreen, show placeholder for others
     switch (_currentIndex) {
       case 1:
         _selectedScreen = CustomerListScreen();
-        break;
-      case 2:
-        _selectedScreen = VehicleListScreen(); // Placeholder for Jobs
         break;
       default:
         _selectedScreen = Center(
@@ -76,14 +72,8 @@ class _HomeNavigatorState extends State<HomeNavigator> {
           BottomNavigationBarItem(icon: Icon(Icons.dashboard), label: 'Home'),
           BottomNavigationBarItem(icon: Icon(Icons.group), label: 'Customers'),
           BottomNavigationBarItem(icon: Icon(Icons.assignment), label: 'Jobs'),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.inventory),
-            label: 'Inventory',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.settings),
-            label: 'Settings',
-          ),
+          BottomNavigationBarItem(icon: Icon(Icons.inventory), label: 'Inventory'),
+          BottomNavigationBarItem(icon: Icon(Icons.settings), label: 'Settings'),
         ],
       ),
     );
