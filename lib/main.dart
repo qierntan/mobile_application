@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:mobile_application/screens/customer_list_screen.dart';
+import 'package:mobile_application/screens/Vehicle/vehicle_list_screen.dart';
+import 'screens/Customer/customer_list_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -31,7 +32,7 @@ class HomeNavigator extends StatefulWidget {
 }
 
 class _HomeNavigatorState extends State<HomeNavigator> {
-  int _currentIndex = 1; // Start on Customers tab
+  int _currentIndex = 1; // 👈 Start on Customers tab since it's the only screen
   final List<String> _titles = [
     'Home',
     'Customers',
@@ -44,10 +45,13 @@ class _HomeNavigatorState extends State<HomeNavigator> {
   Widget build(BuildContext context) {
     Widget _selectedScreen;
 
-    // Load CustomerListScreen, show placeholder for others
+    // Only load CustomerListScreen, show placeholder for others
     switch (_currentIndex) {
       case 1:
         _selectedScreen = CustomerListScreen();
+        break;
+      case 2:
+        _selectedScreen = VehicleListScreen(); // Placeholder for Jobs
         break;
       default:
         _selectedScreen = Center(
@@ -65,15 +69,21 @@ class _HomeNavigatorState extends State<HomeNavigator> {
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         type: BottomNavigationBarType.fixed,
-        selectedItemColor: Color.fromARGB(255, 178, 72, 249),
+        selectedItemColor: Colors.teal,
         unselectedItemColor: Colors.grey,
         onTap: (index) => setState(() => _currentIndex = index),
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.dashboard), label: 'Home'),
           BottomNavigationBarItem(icon: Icon(Icons.group), label: 'Customers'),
           BottomNavigationBarItem(icon: Icon(Icons.assignment), label: 'Jobs'),
-          BottomNavigationBarItem(icon: Icon(Icons.inventory), label: 'Inventory'),
-          BottomNavigationBarItem(icon: Icon(Icons.settings), label: 'Settings'),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.inventory),
+            label: 'Inventory',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.settings),
+            label: 'Settings',
+          ),
         ],
       ),
     );
