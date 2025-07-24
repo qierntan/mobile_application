@@ -2,10 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class AddServiceRecordScreen extends StatefulWidget {
+  final String customerId;
   final String vehicleId;
 
   const AddServiceRecordScreen({
     Key? key,
+    required this.customerId,
     required this.vehicleId,
   }) : super(key: key);
 

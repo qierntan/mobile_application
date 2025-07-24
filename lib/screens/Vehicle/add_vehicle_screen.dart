@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class AddVehicleScreen extends StatefulWidget {
+  final String customerId;
   final String? vehicleId;
   final Map<String, dynamic>? vehicleData;
 
   const AddVehicleScreen({
     Key? key,
+    required this.customerId,
     this.vehicleId,
     this.vehicleData,
   }) : super(key: key);
@@ -26,10 +28,10 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
   void initState() {
     super.initState();
     if (widget.vehicleData != null) {
-      _makeController.text = widget.vehicleData!['make'];
-      _modelController.text = widget.vehicleData!['model'];
-      _yearController.text = widget.vehicleData!['year'].toString();
-      _vinController.text = widget.vehicleData!['vin'];
+      _makeController.text = widget.vehicleData!['make'] ?? '';
+      _modelController.text = widget.vehicleData!['model'] ?? '';
+      _yearController.text = widget.vehicleData!['year']?.toString() ?? '';
+      _vinController.text = widget.vehicleData!['vin'] ?? '';
     }
   }
 
@@ -79,7 +81,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                     child: Text('Cancel', style: TextStyle(color: Colors.grey)),
                   ),
                   ElevatedButton(
-                    onPressed: () {
+                    onPressed: () async {
                       if (_formKey.currentState!.validate()) {
                         final vehicle = {
                           'make': _makeController.text,
@@ -89,21 +91,22 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                           'service_history': widget.vehicleData != null ? widget.vehicleData!['service_history'] : {},
                         };
                         final vehicleRef = FirebaseFirestore.instance.collection('vehicles');
+                        String newVehicleId = DateTime.now().millisecondsSinceEpoch.toString();
                         if (widget.vehicleId == null) {
-                          vehicleRef.add(vehicle).then((_) {
-                            Navigator.pop(context);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Vehicle added')),
-                            );
+                          await vehicleRef.doc(newVehicleId).set(vehicle);
+                          await FirebaseFirestore.instance
+                              .collection('Customer')
+                              .doc(widget.customerId)
+                              .update({
+                            'vehicleIds': FieldValue.arrayUnion([newVehicleId]),
                           });
                         } else {
-                          vehicleRef.doc(widget.vehicleId).update(vehicle).then((_) {
-                            Navigator.pop(context);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Vehicle updated')),
-                            );
-                          });
+                          await vehicleRef.doc(widget.vehicleId).update(vehicle);
                         }
+                        Navigator.pop(context);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(widget.vehicleId == null ? 'Vehicle added' : 'Vehicle updated')),
+                        );
                       }
                     },
                     style: ElevatedButton.styleFrom(backgroundColor: Colors.teal),
