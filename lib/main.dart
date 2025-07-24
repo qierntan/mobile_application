@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'screens/customer_list_screen.dart';
 
-void main() async{
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
   runApp(const MainApp());
@@ -16,7 +16,7 @@ class MainApp extends StatelessWidget {
     return MaterialApp(
       title: 'Workshop CRM',
       theme: ThemeData(
-        primarySwatch: Colors.teal,
+        primaryColor: Color(0xFFE9E0EF),
         scaffoldBackgroundColor: Colors.grey[100],
       ),
       home: HomeNavigator(),
@@ -31,13 +31,13 @@ class HomeNavigator extends StatefulWidget {
 }
 
 class _HomeNavigatorState extends State<HomeNavigator> {
-  int _currentIndex = 1; // 👈 Start on Customers tab since it's the only screen
+  int _currentIndex = 1;
   final List<String> _titles = [
     'Home',
     'Customers',
     'Jobs',
     'Inventory',
-    'Settings'
+    'Settings',
   ];
 
   @override
@@ -60,10 +60,7 @@ class _HomeNavigatorState extends State<HomeNavigator> {
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(_titles[_currentIndex]),
-        centerTitle: true,
-      ),
+      appBar: AppBar(title: Text(_titles[_currentIndex]), centerTitle: true),
       body: _selectedScreen,
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
@@ -75,8 +72,14 @@ class _HomeNavigatorState extends State<HomeNavigator> {
           BottomNavigationBarItem(icon: Icon(Icons.dashboard), label: 'Home'),
           BottomNavigationBarItem(icon: Icon(Icons.group), label: 'Customers'),
           BottomNavigationBarItem(icon: Icon(Icons.assignment), label: 'Jobs'),
-          BottomNavigationBarItem(icon: Icon(Icons.inventory), label: 'Inventory'),
-          BottomNavigationBarItem(icon: Icon(Icons.settings), label: 'Settings'),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.inventory),
+            label: 'Inventory',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.settings),
+            label: 'Settings',
+          ),
         ],
       ),
     );
