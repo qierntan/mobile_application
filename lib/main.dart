@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:mobile_application/screens/Vehicle/vehicle_list_screen.dart';
+import 'package:mobile_application/screens/work_scheduler_screen.dart';
 import 'screens/customer_list_screen.dart';
 
 void main() async {
@@ -51,7 +52,7 @@ class _HomeNavigatorState extends State<HomeNavigator> {
         _selectedScreen = CustomerListScreen();
         break;
       case 2:
-        _selectedScreen = VehicleListScreen(); // Placeholder for Jobs
+        _selectedScreen = WorkSchedulerScreen(); // Show Work Scheduler for Jobs
         break;
       default:
         _selectedScreen = Center(
