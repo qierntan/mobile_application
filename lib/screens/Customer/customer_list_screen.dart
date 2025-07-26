@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:mobile_application/screens/Customer/customer_details_screen.dart';
 import 'package:mobile_application/screens/Vehicle/vehicle_list_screen.dart';
 
 class CustomerListScreen extends StatelessWidget {
@@ -47,7 +48,7 @@ class CustomerListScreen extends StatelessWidget {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (context) => VehicleListScreen(customerId: customerId, customerName: name),
+                        builder: (context) => CustomerDetailsScreen(customerId: customerId),
                       ),
                     );
                   },
