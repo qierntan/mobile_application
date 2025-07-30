@@ -23,6 +23,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
   final _modelController = TextEditingController();
   final _yearController = TextEditingController();
   final _vinController = TextEditingController();
+  // Removed service history controllers
 
   @override
   void initState() {
@@ -32,7 +33,26 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
       _modelController.text = widget.vehicleData!['model'] ?? '';
       _yearController.text = widget.vehicleData!['year']?.toString() ?? '';
       _vinController.text = widget.vehicleData!['vin'] ?? '';
+      // Removed service history prefill
     }
+  }
+
+  Future<String> _generateNewVehicleId() async {
+    final vehicleRef = FirebaseFirestore.instance.collection('Vehicle');
+    final querySnapshot = await vehicleRef.get();
+    int maxNumber = 0;
+    for (var doc in querySnapshot.docs) {
+      final id = doc.id;
+      final match = RegExp(r'^V(\d{3})').firstMatch(id);
+      if (match != null) {
+        final number = int.tryParse(match.group(1)!);
+        if (number != null && number > maxNumber) {
+          maxNumber = number;
+        }
+      }
+    }
+    final newNumber = maxNumber + 1;
+    return 'V' + newNumber.toString().padLeft(3, '0');
   }
 
   @override
@@ -72,6 +92,8 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                 decoration: InputDecoration(labelText: 'VIN', border: OutlineInputBorder()),
                 validator: (value) => value!.isEmpty ? 'Enter VIN' : null,
               ),
+              SizedBox(height: 12),
+              // Removed service history fields
               SizedBox(height: 16),
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
@@ -84,15 +106,17 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                     onPressed: () async {
                       if (_formKey.currentState!.validate()) {
                         final vehicle = {
+                          'customerId': widget.customerId,
                           'make': _makeController.text,
                           'model': _modelController.text,
                           'year': int.parse(_yearController.text),
                           'vin': _vinController.text,
-                          'service_history': widget.vehicleData != null ? widget.vehicleData!['service_history'] : {},
+                          'service_history': null,
                         };
-                        final vehicleRef = FirebaseFirestore.instance.collection('vehicles');
-                        String newVehicleId = DateTime.now().millisecondsSinceEpoch.toString();
+                        final vehicleRef = FirebaseFirestore.instance.collection('Vehicle');
+                        String newVehicleId;
                         if (widget.vehicleId == null) {
+                          newVehicleId = await _generateNewVehicleId();
                           await vehicleRef.doc(newVehicleId).set(vehicle);
                           await FirebaseFirestore.instance
                               .collection('Customer')
