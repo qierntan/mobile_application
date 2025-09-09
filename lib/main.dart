@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:mobile_application/screens/Customer/customer_list_screen.dart';
+import 'package:mobile_application/screens/login_screen.dart';
+import 'package:mobile_application/screens/dashboard_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -19,7 +21,7 @@ class MainApp extends StatelessWidget {
         primarySwatch: Colors.teal,
         scaffoldBackgroundColor: Colors.grey[100],
       ),
-      home: HomeNavigator(),
+      home: LoginScreen(),
       debugShowCheckedModeBanner: false,
     );
   }
@@ -31,7 +33,7 @@ class HomeNavigator extends StatefulWidget {
 }
 
 class _HomeNavigatorState extends State<HomeNavigator> {
-  int _currentIndex = 1; // Start on Customers tab
+  int _currentIndex = 0; // Start on Home tab (Dashboard)
   final List<String> _titles = [
     'Home',
     'Customers',
@@ -44,8 +46,11 @@ class _HomeNavigatorState extends State<HomeNavigator> {
   Widget build(BuildContext context) {
     Widget _selectedScreen;
 
-    // Load CustomerListScreen, show placeholder for others
+    // Load screens based on navigation index
     switch (_currentIndex) {
+      case 0:
+        _selectedScreen = DashboardScreen();
+        break;
       case 1:
         _selectedScreen = CustomerListScreen();
         break;
