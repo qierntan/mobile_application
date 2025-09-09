@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class ServiceHistoryScreen extends StatefulWidget {
   final String vehicleId;
@@ -28,9 +29,53 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
         ),
         centerTitle: false,
       ),
-      body: _buildServiceHistoryList(),
+      body: StreamBuilder<QuerySnapshot>(
+        stream: FirebaseFirestore.instance
+            .collection('ServiceRecord')
+            .where('vehicleId', isEqualTo: widget.vehicleId)
+            .orderBy('date', descending: true)
+            .snapshots(),
+        builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return Center(
+              child: Text('Error: ${snapshot.error}'),
+            );
+          }
+
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return Center(
+              child: CircularProgressIndicator(),
+            );
+          }
+
+          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.history,
+                    size: 64,
+                    color: Colors.grey,
+                  ),
+                  SizedBox(height: 16),
+                  Text(
+                    'No service history found',
+                    style: TextStyle(
+                      fontSize: 18,
+                      color: Colors.grey,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          return _buildServiceHistoryList(snapshot.data!.docs);
+        },
+      ),
       bottomNavigationBar: BottomNavigationBar(
-        currentIndex: 1, // Customers tab is selected
+        currentIndex: 0, // Home tab should be selected for service history
         type: BottomNavigationBarType.fixed,
         selectedItemColor: Color.fromARGB(255, 178, 72, 249),
         unselectedItemColor: Colors.grey,
@@ -70,44 +115,31 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
     );
   }
 
-  Widget _buildServiceHistoryList() {
-    // Dummy service history data
-    final List<Map<String, dynamic>> serviceRecords = [
-      {
-        'date': DateTime(2024, 1, 15),
-        'serviceInterval': '15,000 km Service',
-        'kilometers': '15,000',
-        'cost': '85.50',
-      },
-      {
-        'date': DateTime(2024, 2, 20),
-        'serviceInterval': '20,000 km Service',
-        'kilometers': '20,000',
-        'cost': '120.00',
-      },
-      {
-        'date': DateTime(2024, 3, 10),
-        'serviceInterval': '25,000 km Service',
-        'kilometers': '25,000',
-        'cost': '95.75',
-      },
-      {
-        'date': DateTime(2024, 4, 5),
-        'serviceInterval': '30,000 km Service',
-        'kilometers': '30,000',
-        'cost': '250.00',
-      },
-    ];
-
+  Widget _buildServiceHistoryList(List<QueryDocumentSnapshot> documents) {
     return ListView.builder(
       padding: EdgeInsets.all(20),
-      itemCount: serviceRecords.length,
+      itemCount: documents.length,
       itemBuilder: (context, index) {
-        final record = serviceRecords[index];
-        final DateTime date = record['date'];
-        final String serviceInterval = record['serviceInterval'];
-        final String kilometers = record['kilometers'];
-        final String cost = record['cost'];
+        final doc = documents[index];
+        final data = doc.data() as Map<String, dynamic>;
+        
+        // Parse date from Firestore (handle both Timestamp and String)
+        DateTime date;
+        if (data['date'] is Timestamp) {
+          final Timestamp timestamp = data['date'] as Timestamp;
+          date = timestamp.toDate();
+        } else if (data['date'] is String) {
+          // Handle ISO string format like "2024-01-15T00:00:00.000"
+          date = DateTime.parse(data['date'] as String);
+        } else {
+          // Fallback to current date if format is unexpected
+          date = DateTime.now();
+        }
+        
+        final String serviceType = data['serviceType'] ?? 'Service';
+        final int kilometers = (data['kilometers'] ?? 0).toInt();
+        final double cost = (data['cost'] ?? 0.0).toDouble();
+        final String description = data['description'] ?? '';
         final String formattedDate = '${date.day.toString().padLeft(2, '0')} ${_getMonthName(date.month)} ${date.year}';
 
         return Container(
@@ -156,9 +188,11 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
                 ],
               ),
               SizedBox(height: 12),
-              _buildInfoRow('Service Interval', serviceInterval),
-              _buildInfoRow('Kilometers', '${kilometers} km'),
-              _buildInfoRow('Cost', 'RM ${cost}'),
+              _buildInfoRow('Service Type', serviceType),
+              _buildInfoRow('Kilometers', '${kilometers.toString()} km'),
+              _buildInfoRow('Cost', 'RM ${cost.toStringAsFixed(2)}'),
+              if (description.isNotEmpty)
+                _buildInfoRow('Description', description),
             ],
           ),
         );
@@ -170,6 +204,7 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
     return Padding(
       padding: EdgeInsets.only(bottom: 8),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             '$label:',
@@ -180,12 +215,16 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
             ),
           ),
           SizedBox(width: 8),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.black87,
-              fontWeight: FontWeight.w600,
+          Expanded(
+            child: Text(
+              value,
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.black87,
+                fontWeight: FontWeight.w600,
+              ),
+              softWrap: true,
+              overflow: TextOverflow.visible,
             ),
           ),
         ],
