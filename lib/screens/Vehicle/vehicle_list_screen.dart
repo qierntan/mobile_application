@@ -76,9 +76,7 @@ class VehicleListScreen extends StatelessWidget {
                           context,
                           MaterialPageRoute(
                             builder: (context) => VehicleDetailsScreen(
-                              customerId: customerId,
                               vehicleId: vehicleId,
-                              vehicleData: data,
                             ),
                           ),
                         );
