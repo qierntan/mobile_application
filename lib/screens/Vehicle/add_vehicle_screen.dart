@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class AddVehicleScreen extends StatefulWidget {
+  final String customerId;
   final String? vehicleId;
   final Map<String, dynamic>? vehicleData;
 
   const AddVehicleScreen({
     Key? key,
+    required this.customerId,
     this.vehicleId,
     this.vehicleData,
   }) : super(key: key);
@@ -21,16 +23,36 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
   final _modelController = TextEditingController();
   final _yearController = TextEditingController();
   final _vinController = TextEditingController();
+  // Removed service history controllers
 
   @override
   void initState() {
     super.initState();
     if (widget.vehicleData != null) {
-      _makeController.text = widget.vehicleData!['make'];
-      _modelController.text = widget.vehicleData!['model'];
-      _yearController.text = widget.vehicleData!['year'].toString();
-      _vinController.text = widget.vehicleData!['vin'];
+      _makeController.text = widget.vehicleData!['make'] ?? '';
+      _modelController.text = widget.vehicleData!['model'] ?? '';
+      _yearController.text = widget.vehicleData!['year']?.toString() ?? '';
+      _vinController.text = widget.vehicleData!['vin'] ?? '';
+      // Removed service history prefill
     }
+  }
+
+  Future<String> _generateNewVehicleId() async {
+    final vehicleRef = FirebaseFirestore.instance.collection('Vehicle');
+    final querySnapshot = await vehicleRef.get();
+    int maxNumber = 0;
+    for (var doc in querySnapshot.docs) {
+      final id = doc.id;
+      final match = RegExp(r'^V(\d{3})').firstMatch(id);
+      if (match != null) {
+        final number = int.tryParse(match.group(1)!);
+        if (number != null && number > maxNumber) {
+          maxNumber = number;
+        }
+      }
+    }
+    final newNumber = maxNumber + 1;
+    return 'V' + newNumber.toString().padLeft(3, '0');
   }
 
   @override
@@ -70,6 +92,8 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                 decoration: InputDecoration(labelText: 'VIN', border: OutlineInputBorder()),
                 validator: (value) => value!.isEmpty ? 'Enter VIN' : null,
               ),
+              SizedBox(height: 12),
+              // Removed service history fields
               SizedBox(height: 16),
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
@@ -79,31 +103,34 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
                     child: Text('Cancel', style: TextStyle(color: Colors.grey)),
                   ),
                   ElevatedButton(
-                    onPressed: () {
+                    onPressed: () async {
                       if (_formKey.currentState!.validate()) {
                         final vehicle = {
+                          'customerId': widget.customerId,
                           'make': _makeController.text,
                           'model': _modelController.text,
                           'year': int.parse(_yearController.text),
                           'vin': _vinController.text,
-                          'service_history': widget.vehicleData != null ? widget.vehicleData!['service_history'] : {},
+                          'service_history': null,
                         };
-                        final vehicleRef = FirebaseFirestore.instance.collection('vehicles');
+                        final vehicleRef = FirebaseFirestore.instance.collection('Vehicle');
+                        String newVehicleId;
                         if (widget.vehicleId == null) {
-                          vehicleRef.add(vehicle).then((_) {
-                            Navigator.pop(context);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Vehicle added')),
-                            );
+                          newVehicleId = await _generateNewVehicleId();
+                          await vehicleRef.doc(newVehicleId).set(vehicle);
+                          await FirebaseFirestore.instance
+                              .collection('Customer')
+                              .doc(widget.customerId)
+                              .update({
+                            'vehicleIds': FieldValue.arrayUnion([newVehicleId]),
                           });
                         } else {
-                          vehicleRef.doc(widget.vehicleId).update(vehicle).then((_) {
-                            Navigator.pop(context);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(content: Text('Vehicle updated')),
-                            );
-                          });
+                          await vehicleRef.doc(widget.vehicleId).update(vehicle);
                         }
+                        Navigator.pop(context);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text(widget.vehicleId == null ? 'Vehicle added' : 'Vehicle updated')),
+                        );
                       }
                     },
                     style: ElevatedButton.styleFrom(backgroundColor: Colors.teal),
