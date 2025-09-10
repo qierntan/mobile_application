@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../../main.dart';
 
 class ServiceHistoryScreen extends StatefulWidget {
   final String vehicleId;
@@ -75,7 +76,7 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
         },
       ),
       bottomNavigationBar: BottomNavigationBar(
-        currentIndex: 0, // Home tab should be selected for service history
+        currentIndex: 1, // Customers tab should be selected for service history
         type: BottomNavigationBarType.fixed,
         selectedItemColor: Color.fromARGB(255, 178, 72, 249),
         unselectedItemColor: Colors.grey,
@@ -83,10 +84,19 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
           // Handle navigation based on index
           switch (index) {
             case 0:
-              Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(builder: (context) => HomeNavigator()),
+                (route) => false,
+              );
               break;
             case 1:
-              // Already on customers section, do nothing
+              // Navigate to customers section
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(builder: (context) => HomeNavigator()),
+                (route) => false,
+              );
               break;
             case 2:
             case 3:

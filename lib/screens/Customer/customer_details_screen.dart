@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../Vehicle/add_vehicle_screen.dart';
 import '../Vehicle/vehicle_details_screen.dart';
+import '../../main.dart';
 
 class CustomerDetailsScreen extends StatelessWidget {
   final String customerId;
@@ -221,7 +222,11 @@ class CustomerDetailsScreen extends StatelessWidget {
           // Handle navigation based on index
           switch (index) {
             case 0:
-              Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(builder: (context) => HomeNavigator()),
+                (route) => false,
+              );
               break;
             case 1:
               // Already on customers section, do nothing

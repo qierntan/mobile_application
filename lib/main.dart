@@ -24,7 +24,12 @@ class MainApp extends StatelessWidget {
         primarySwatch: Colors.teal,
         scaffoldBackgroundColor: Colors.grey[100],
       ),
-      home: LoginScreen(),
+      initialRoute: '/login',
+      routes: {
+        '/': (context) => HomeNavigator(),
+        '/login': (context) => LoginScreen(),
+        '/dashboard': (context) => HomeNavigator(),
+      },
       debugShowCheckedModeBanner: false,
     );
   }
