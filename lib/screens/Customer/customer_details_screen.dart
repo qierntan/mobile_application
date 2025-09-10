@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../Vehicle/add_vehicle_screen.dart';
+import '../Vehicle/vehicle_details_screen.dart';
 
 class CustomerDetailsScreen extends StatelessWidget {
   final String customerId;
@@ -9,9 +10,9 @@ class CustomerDetailsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xFFF5F3EF),
+      backgroundColor: Color(0xFFF5F5F5),
       appBar: AppBar(
-        backgroundColor: Color(0xFFF5F3EF),
+        backgroundColor: Color(0xFFF5F5F5),
         elevation: 0,
         leading: IconButton(
           icon: Icon(Icons.arrow_back, color: Colors.black),
@@ -51,33 +52,68 @@ class CustomerDetailsScreen extends StatelessWidget {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      // Customer image
-                      if (logoUrl.isNotEmpty)
-                        Image.network(logoUrl, height: 60)
-                      else
-                        Container(
-                          height: 60,
-                          alignment: Alignment.center,
-                          child: Text('No image found', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                      // Honda Logo
+                      Container(
+                        width: 80,
+                        height: 80,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.grey.shade300),
                         ),
+                        child: Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Container(
+                                width: 40,
+                                height: 30,
+                                decoration: BoxDecoration(
+                                  color: Colors.red,
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Center(
+                                  child: Text(
+                                    'H',
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              SizedBox(height: 2),
+                              Text(
+                                'HONDA',
+                                style: TextStyle(
+                                  color: Colors.red,
+                                  fontSize: 8,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
                       SizedBox(height: 10),
-                      Text(name, style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold)),
+                      Text(name, style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black87)),
                       SizedBox(height: 10),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.phone, color: Colors.black54),
+                          Icon(Icons.phone, color: Colors.black54, size: 18),
                           SizedBox(width: 8),
-                          Text(phone, style: TextStyle(fontSize: 16)),
+                          Text(phone, style: TextStyle(fontSize: 14, color: Colors.black87)),
                         ],
                       ),
-                      SizedBox(height: 6),
+                      SizedBox(height: 8),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Icon(Icons.email, color: Colors.black54),
+                          Icon(Icons.email, color: Colors.black54, size: 18),
                           SizedBox(width: 8),
-                          Text(email, style: TextStyle(fontSize: 16)),
+                          Text(email, style: TextStyle(fontSize: 14, color: Colors.black87)),
                         ],
                       ),
                     ],
@@ -86,10 +122,10 @@ class CustomerDetailsScreen extends StatelessWidget {
               ),
               SizedBox(height: 18),
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 12),
                 child: Text(
                   "$name's vehicles",
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87),
                 ),
               ),
               // Vehicles List
@@ -114,64 +150,106 @@ class CustomerDetailsScreen extends StatelessWidget {
                       final String year = v['year']?.toString() ?? '';
                       final String vin = v['vin'] ?? '';
                       final String? imageUrl = v['imageUrl'];
-                      return Container(
-                        margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        padding: EdgeInsets.all(10),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Row(
-                          children: [
-                            if (imageUrl != null && imageUrl.isNotEmpty)
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(12),
-                                child: Image.network(imageUrl, width: 80, height: 60, fit: BoxFit.cover),
-                              )
-                            else
-                              Container(
-                                width: 80,
-                                height: 60,
-                                alignment: Alignment.center,
-                                child: Text('No image found', style: TextStyle(fontSize: 12, color: Colors.grey)),
-                              ),
-                            SizedBox(width: 16),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text('$make $model', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                                  SizedBox(height: 4),
-                                  Text('Year : $year', style: TextStyle(fontSize: 13)),
-                                  Text('VIN : $vin', style: TextStyle(fontSize: 13)),
-                                ],
-                              ),
+                      return GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => VehicleDetailsScreen(vehicleId: doc.id),
                             ),
-                          ],
+                          );
+                        },
+                        child: Container(
+                          margin: EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+                          padding: EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.05),
+                                blurRadius: 8,
+                                offset: Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Row(
+                            children: [
+                              if (imageUrl != null && imageUrl.isNotEmpty)
+                                ClipRRect(
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: Image.network(imageUrl, width: 70, height: 50, fit: BoxFit.cover),
+                                )
+                              else
+                                Container(
+                                  width: 70,
+                                  height: 50,
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey.shade200,
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Icon(Icons.directions_car, color: Colors.grey.shade500),
+                                ),
+                              SizedBox(width: 16),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text('$make $model', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16, color: Colors.black87)),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       );
                     }).toList(),
                   );
                 },
               ),
-              SizedBox(height: 60),
+              SizedBox(height: 100),
             ],
           );
         },
       ),
-      floatingActionButton: FloatingActionButton(
-        backgroundColor: Colors.white,
-        child: Icon(Icons.add, color: Colors.black, size: 32),
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => AddVehicleScreen(customerId: customerId),
-            ),
-          );
+      bottomNavigationBar: BottomNavigationBar(
+        currentIndex: 1, // Customers tab is selected
+        type: BottomNavigationBarType.fixed,
+        selectedItemColor: Color.fromARGB(255, 178, 72, 249),
+        unselectedItemColor: Colors.grey,
+        onTap: (index) {
+          // Handle navigation based on index
+          switch (index) {
+            case 0:
+              Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
+              break;
+            case 1:
+              // Already on customers section, do nothing
+              break;
+            case 2:
+            case 3:
+            case 4:
+              // Show under development message for other tabs
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('🚧 This screen is under development.')),
+              );
+              break;
+          }
         },
+        items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.dashboard), label: 'Home'),
+          BottomNavigationBarItem(icon: Icon(Icons.group), label: 'Customers'),
+          BottomNavigationBarItem(icon: Icon(Icons.assignment), label: 'Jobs'),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.inventory),
+            label: 'Inventory',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.settings),
+            label: 'Settings',
+          ),
+        ],
       ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
     );
   }
 }
