@@ -7,6 +7,7 @@ import 'package:mobile_application/screens/InvoiceManagement/report.dart';
 import 'package:mobile_application/screens/login_screen.dart';
 import 'package:mobile_application/screens/dashboard_screen.dart';
 import 'firebase_options.dart';
+import 'package:mobile_application/screens/Inventory/inventory_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -87,6 +88,12 @@ class _HomeNavigatorState extends State<HomeNavigator> {
         break;
       case 1:
         _selectedScreen = CustomerListScreen();
+        break;
+      case 3:
+        _selectedScreen = InventoryScreen();
+        break;
+      case 4:
+        _selectedScreen = InvoiceListScreen();
         break;
       default:
         _selectedScreen = Center(
