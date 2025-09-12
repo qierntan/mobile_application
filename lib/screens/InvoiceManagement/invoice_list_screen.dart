@@ -166,17 +166,24 @@ class _InvoiceListScreenState extends State<InvoiceListScreen> {
                   );
                 }
 
-                // Sort: Pending Approve always at top
+                // Sort: Pending status always at top, then by date
                 invoices.sort((a, b) {
                   final aData = a.data() as Map<String, dynamic>;
                   final bData = b.data() as Map<String, dynamic>;
-                  if (aData['status'] == 'Pending Approve' &&
-                      bData['status'] != 'Pending Approve')
-                    return -1;
-                  if (aData['status'] != 'Pending Approve' &&
-                      bData['status'] == 'Pending Approve')
-                    return 1;
-                  return 0;
+                  final aStatus = aData['status'] as String;
+                  final bStatus = bData['status'] as String;
+
+                  // Check if either status contains "Pending"
+                  final aIsPending = aStatus.toLowerCase().contains('pending');
+                  final bIsPending = bStatus.toLowerCase().contains('pending');
+
+                  if (aIsPending && !bIsPending) return -1;
+                  if (!aIsPending && bIsPending) return 1;
+
+                  // If both are pending or both are not pending, sort by date
+                  final aDate = (aData['date'] as Timestamp).toDate();
+                  final bDate = (bData['date'] as Timestamp).toDate();
+                  return bDate.compareTo(aDate); // Most recent first
                 });
 
                 return ListView.builder(
