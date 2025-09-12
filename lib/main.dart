@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:mobile_application/screens/Customer/customer_list_screen.dart';
 import 'package:mobile_application/screens/InvoiceManagement/invoice_list_screen.dart';
+import 'package:mobile_application/screens/InvoiceManagement/invoice_pdf_service.dart';
 import 'package:mobile_application/screens/InvoiceManagement/report.dart';
 import 'package:mobile_application/screens/login_screen.dart';
 import 'package:mobile_application/screens/dashboard_screen.dart';
-import 'package:mobile_application/screens/InvoiceManagement/invoice_pdf_service.dart';
 import 'firebase_options.dart';
 
 void main() async {
@@ -87,9 +87,6 @@ class _HomeNavigatorState extends State<HomeNavigator> {
         break;
       case 1:
         _selectedScreen = CustomerListScreen();
-        break;
-      case 4:
-        _selectedScreen = InvoiceListScreen();
         break;
       default:
         _selectedScreen = Center(
