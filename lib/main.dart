@@ -3,8 +3,9 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:mobile_application/screens/Customer/customer_list_screen.dart';
 import 'package:mobile_application/screens/login_screen.dart';
 import 'package:mobile_application/screens/dashboard_screen.dart';
-import 'package:mobile_application/screens/WorkScheduler/assigned_jobs_screen.dart';
+import 'package:mobile_application/screens/Inventory/inventory_screen.dart';
 import 'firebase_options.dart';
+
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -63,8 +64,8 @@ class _HomeNavigatorState extends State<HomeNavigator> {
       case 1:
         _selectedScreen = CustomerListScreen();
         break;
-      case 2:
-        _selectedScreen = AssignedJobsScreen();
+      case 3 : 
+        _selectedScreen = InventoryScreen();
         break;
       default:
         _selectedScreen = Center(
