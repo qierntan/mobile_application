@@ -1,5 +1,11 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'customer_details_screen.dart';
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:record/record.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:just_audio/just_audio.dart';
 
 class CustomerChatHistory extends StatefulWidget {
   final String customerId;
@@ -14,6 +20,8 @@ class CustomerChatHistory extends StatefulWidget {
 class _CustomerChatHistoryState extends State<CustomerChatHistory> {
   final TextEditingController _messageController = TextEditingController();
   bool _isSending = false;
+  final AudioRecorder _recorder = AudioRecorder();
+  bool _isRecording = false;
 
   Query<Map<String, dynamic>> _chatHistoryQuery(String customerId) {
     // Structure in screenshot: ChatHistory (top-level), one doc per message with fields
@@ -27,8 +35,42 @@ class _CustomerChatHistoryState extends State<CustomerChatHistory> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('${widget.customerName}'),
+        title: Row(
+          children: [
+            GestureDetector(
+              onTap: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => CustomerDetailsScreen(customerId: widget.customerId),
+                  ),
+                );
+              },
+              child: CircleAvatar(
+                radius: 16,
+                backgroundColor: Colors.grey.shade300,
+                child: const Icon(Icons.person, color: Colors.white, size: 18),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                '${widget.customerName}',
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
         backgroundColor: Color(0xFFF5F3EF),
+        actions: [
+          IconButton(
+            tooltip: 'Clean unreachable audio',
+            icon: const Icon(Icons.cleaning_services_outlined),
+            onPressed: () async {
+              await _cleanupUnreachableAudioMessages();
+            },
+          ),
+        ],
       ),
       body: Column(
         children: [
@@ -63,10 +105,8 @@ class _CustomerChatHistoryState extends State<CustomerChatHistory> {
                 itemBuilder: (context, index) {
                   final data = sortedDocs[index].data();
                   final messageType = (data['messageType'] ?? '').toString();
-                  if (messageType.isNotEmpty && messageType != 'text') {
-                    return const SizedBox.shrink();
-                  }
                   final text = (data['messageText'] ?? '').toString();
+                  final audioUrl = (data['audioUrl'] ?? '').toString();
                   final ts = data['timestamp'];
                   final sentAt = (ts is Timestamp)
                       ? DateTime.fromMicrosecondsSinceEpoch(
@@ -127,35 +167,43 @@ class _CustomerChatHistoryState extends State<CustomerChatHistory> {
                       ? screenWidth - 24 // take (almost) the entire row for customer, keep margins
                       : screenWidth * 0.78); // typical chat width for sender on right
 
+                  // Build UI differently for audio vs text
                   final bubble = Row(
                     mainAxisAlignment:
                         isFromCustomer ? MainAxisAlignment.start : MainAxisAlignment.end,
                     children: [
-                      ConstrainedBox(
-                        constraints: BoxConstraints(maxWidth: maxBubbleWidth),
-                        child: Container(
-                          margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                          decoration: BoxDecoration(
-                            color: isFromCustomer ? const Color(0xFFF0F0F0) : const Color(0xFFE1F5FE),
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(text, style: const TextStyle(fontSize: 16)),
-                              if (timeLabel != null)
-                                Padding(
-                                  padding: const EdgeInsets.only(top: 4),
-                                  child: Text(
-                                    timeLabel,
-                                    style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                      if (messageType == 'audio' && audioUrl.isNotEmpty)
+                        // For audio: no colored bubble. If audio fails to load, inner widget returns SizedBox.shrink.
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          child: _AudioBubble(audioUrl: audioUrl, timeLabel: timeLabel),
+                        )
+                      else
+                        ConstrainedBox(
+                          constraints: BoxConstraints(maxWidth: maxBubbleWidth),
+                          child: Container(
+                            margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                            decoration: BoxDecoration(
+                              color: isFromCustomer ? const Color(0xFFF0F0F0) : const Color(0xFFE1F5FE),
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(text, style: const TextStyle(fontSize: 16)),
+                                if (timeLabel != null)
+                                  Padding(
+                                    padding: const EdgeInsets.only(top: 4),
+                                    child: Text(
+                                      timeLabel,
+                                      style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                                    ),
                                   ),
-                                ),
-                            ],
+                              ],
+                            ),
                           ),
                         ),
-                      ),
                     ],
                   );
 
@@ -172,7 +220,7 @@ class _CustomerChatHistoryState extends State<CustomerChatHistory> {
                                 color: const Color(0xFFEDEDED),
                                 borderRadius: BorderRadius.circular(12),
                               ),
-                              child: Text(
+        child: Text(
                                 dateHeader,
                                 style: const TextStyle(fontSize: 12, color: Colors.black54),
                               ),
@@ -220,6 +268,12 @@ class _CustomerChatHistoryState extends State<CustomerChatHistory> {
                     color: const Color(0xFF2196F3),
                     onPressed: _isSending ? null : _sendMessage,
                   ),
+                  const SizedBox(width: 4),
+                  IconButton(
+                    icon: Icon(_isRecording ? Icons.stop_circle : Icons.mic),
+                    color: _isRecording ? Colors.red : Colors.black87,
+                    onPressed: _isSending ? null : _toggleRecord,
+                  ),
                 ],
               ),
             ),
@@ -249,9 +303,208 @@ class _CustomerChatHistoryState extends State<CustomerChatHistory> {
     }
   }
 
+  Future<void> _toggleRecord() async {
+    if (_isRecording) {
+      final path = await _recorder.stop();
+      setState(() => _isRecording = false);
+      if (path != null) {
+        await _uploadAndSendAudio(path);
+      }
+      return;
+    }
+
+    final hasPerm = await _recorder.hasPermission();
+    if (!hasPerm) return;
+    final dir = await getTemporaryDirectory();
+    final outPath = '${dir.path}/rec_${DateTime.now().millisecondsSinceEpoch}.m4a';
+    await _recorder.start(
+      const RecordConfig(
+        encoder: AudioEncoder.aacLc,
+        bitRate: 128000,
+        sampleRate: 44100,
+      ),
+      path: outPath,
+    );
+    setState(() => _isRecording = true);
+  }
+
+  Future<void> _uploadAndSendAudio(String localPath) async {
+    setState(() => _isSending = true);
+    try {
+      final fileName = 'audio_${DateTime.now().millisecondsSinceEpoch}.m4a';
+      final ref = FirebaseStorage.instance.ref().child('chat_audio').child(fileName);
+      final uploadTask = await ref.putFile(File(localPath));
+      final url = await uploadTask.ref.getDownloadURL();
+
+      await FirebaseFirestore.instance.collection('ChatHistory').add({
+        'messageType': 'audio',
+        'audioUrl': url,
+        'timestamp': FieldValue.serverTimestamp(),
+        'senderRole': 'manager',
+        'customerId': widget.customerId.isEmpty ? null : widget.customerId,
+        'cusName': widget.customerName.isEmpty ? null : widget.customerName,
+        'isRead': false,
+      });
+    } finally {
+      if (mounted) setState(() => _isSending = false);
+    }
+  }
+
+  Future<void> _cleanupUnreachableAudioMessages() async {
+    final q = await FirebaseFirestore.instance
+        .collection('ChatHistory')
+        .where('customerId', isEqualTo: widget.customerId)
+        .where('messageType', isEqualTo: 'audio')
+        .get();
+
+    int deleted = 0;
+    for (final doc in q.docs) {
+      final url = (doc.data()['audioUrl'] ?? '').toString();
+      if (url.isEmpty) {
+        await doc.reference.delete();
+        deleted++;
+        continue;
+      }
+      try {
+        // Try to fetch metadata; if it throws, the file likely doesn't exist
+        await FirebaseStorage.instance.refFromURL(url).getMetadata();
+      } catch (_) {
+        await doc.reference.delete();
+        deleted++;
+      }
+    }
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Cleaned $deleted unreachable audio message(s).')),
+    );
+  }
+
   @override
   void dispose() {
+    _recorder.dispose();
     _messageController.dispose();
     super.dispose();
+  }
+}
+
+class _AudioBubble extends StatefulWidget {
+  final String audioUrl;
+  final String? timeLabel;
+  const _AudioBubble({required this.audioUrl, this.timeLabel});
+
+  @override
+  State<_AudioBubble> createState() => _AudioBubbleState();
+}
+
+class _AudioBubbleState extends State<_AudioBubble> {
+  late final AudioPlayer _player;
+  bool _loading = true;
+  bool _failed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _player = AudioPlayer();
+    _init();
+  }
+
+  Future<void> _init() async {
+    try {
+      // Guard: do not try to load if url is clearly invalid
+      if (widget.audioUrl.isEmpty ||
+          !(widget.audioUrl.startsWith('http://') || widget.audioUrl.startsWith('https://'))) {
+        _failed = true;
+        return;
+      }
+      await _player.setUrl(widget.audioUrl);
+    } catch (e) {
+      _failed = true;
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  @override
+  void dispose() {
+    _player.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_failed) {
+      // If audio can't be loaded, don't show anything as requested
+      return const SizedBox.shrink();
+    }
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        IconButton(
+          icon: _loading
+              ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+              : StreamBuilder<PlayerState>(
+                  stream: _player.playerStateStream,
+                  builder: (context, snapshot) {
+                    final playing = snapshot.data?.playing ?? false;
+                    return Icon(playing ? Icons.pause : Icons.play_arrow);
+                  },
+                ),
+          onPressed: _loading
+              ? null
+              : () async {
+                  final playing = _player.playing;
+                  if (playing) {
+                    await _player.pause();
+                  } else {
+                    await _player.play();
+                  }
+                },
+        ),
+        StreamBuilder<Duration?>(
+          stream: _player.durationStream,
+          builder: (context, snapDur) {
+            final total = snapDur.data ?? Duration.zero;
+            return StreamBuilder<Duration>(
+              stream: _player.positionStream,
+              initialData: Duration.zero,
+              builder: (context, snapPos) {
+                final pos = snapPos.data ?? Duration.zero;
+                String fmt(Duration d) {
+                  final m = d.inMinutes.remainder(60).toString().padLeft(2, '0');
+                  final s = d.inSeconds.remainder(60).toString().padLeft(2, '0');
+                  return '$m:$s';
+                }
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SizedBox(
+                      width: 160,
+                      child: Slider(
+                        value: pos.inMilliseconds.clamp(0, total.inMilliseconds == 0 ? 1 : total.inMilliseconds).toDouble(),
+                        min: 0,
+                        max: (total.inMilliseconds == 0 ? 1 : total.inMilliseconds).toDouble(),
+                        onChanged: (v) async {
+                          await _player.seek(Duration(milliseconds: v.toInt()));
+                        },
+                      ),
+                    ),
+                    Row(
+                      children: [
+                        Text('${fmt(pos)} / ${fmt(total)}', style: TextStyle(fontSize: 12, color: Colors.grey.shade700)),
+                        if (widget.timeLabel != null) ...[
+                          const SizedBox(width: 8),
+                          Text(widget.timeLabel!, style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
+                        ]
+                      ],
+                    )
+                  ],
+                );
+              },
+            );
+          },
+        ),
+      ],
+    );
   }
 }
