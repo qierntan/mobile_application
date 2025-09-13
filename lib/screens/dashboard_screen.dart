@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mobile_application/services/notification_service.dart';
 
 class DashboardScreen extends StatefulWidget {
   @override
@@ -405,6 +406,94 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         'RM 250.00 payment confirmed',
                         'View',
                         Icons.payment,
+                      ),
+                      Divider(thickness: 2, color: Colors.grey.shade300),
+                      Padding(
+                        padding: EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Test Notifications',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                                color: Color(0xFF5A9FD4),
+                              ),
+                            ),
+                            SizedBox(height: 12),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: ElevatedButton.icon(
+                                    onPressed: () {
+                                      NotificationService().showServiceReminder(
+                                        vehicleId: 'ABC123',
+                                        message: 'Vehicle ABC123 is due for service in 3 days',
+                                      );
+                                      Navigator.pop(context);
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(content: Text('Service reminder notification sent!')),
+                                      );
+                                    },
+                                    icon: Icon(Icons.build, size: 16),
+                                    label: Text('Service', style: TextStyle(fontSize: 12)),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Color(0xFF5A9FD4),
+                                      foregroundColor: Colors.white,
+                                      padding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                                    ),
+                                  ),
+                                ),
+                                SizedBox(width: 8),
+                                Expanded(
+                                  child: ElevatedButton.icon(
+                                    onPressed: () {
+                                      NotificationService().showPaymentNotification(
+                                        amount: '350.00',
+                                        customerId: 'CUST001',
+                                      );
+                                      Navigator.pop(context);
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(content: Text('Payment notification sent!')),
+                                      );
+                                    },
+                                    icon: Icon(Icons.payment, size: 16),
+                                    label: Text('Payment', style: TextStyle(fontSize: 12)),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.green,
+                                      foregroundColor: Colors.white,
+                                      padding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: 8),
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton.icon(
+                                onPressed: () {
+                                  NotificationService().showNewReplyNotification(
+                                    message: 'Thank you for the excellent service!',
+                                    customerId: 'CUST002',
+                                  );
+                                  Navigator.pop(context);
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(content: Text('Reply notification sent!')),
+                                  );
+                                },
+                                icon: Icon(Icons.chat_bubble_outline, size: 16),
+                                label: Text('New Reply', style: TextStyle(fontSize: 12)),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.orange,
+                                  foregroundColor: Colors.white,
+                                  padding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
