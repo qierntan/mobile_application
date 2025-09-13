@@ -6,6 +6,7 @@ import 'package:intl/intl.dart';
 import 'package:mailer/mailer.dart';
 import 'package:mailer/smtp_server.dart';
 import 'package:mobile_application/model/invoice_management/invoice.dart';
+import 'package:mobile_application/configuration/config.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
@@ -248,15 +249,15 @@ class InvoicePdfController {
     final customerEmail = customerDoc.docs.first.get('cusEmail') as String;
 
     final response = await http.post(
-      Uri.parse('http://192.168.1.103:4242/create-checkout-session'),
+      Uri.parse('${Config.paymentServerUrl}/create-checkout-session'),
       headers: {'Content-Type': 'application/json'},
       body: jsonEncode({
         'amount': invoice.total,
         'description': 'Invoice #${invoice.id}',
         'customer_email': customerEmail,
         'success_url':
-            'http://192.168.1.103:4242/success?session_id={CHECKOUT_SESSION_ID}&invoice_id=${invoice.id}&customer_email=$customerEmail',
-        'cancel_url': 'http://192.168.1.103:4242/cancel',
+            '${Config.paymentServerUrl}/success?session_id={CHECKOUT_SESSION_ID}&invoice_id=${invoice.id}&customer_email=$customerEmail',
+        'cancel_url': '${Config.paymentServerUrl}/cancel',
         'metadata': {
           'invoice_id': invoice.id,
           'customer_name': invoice.customerName,
@@ -485,8 +486,6 @@ class InvoicePdfController {
       print('✅ Payment success handler is listening on port 8081');
       print('🌐 Server accessible at:');
       print('   - localhost:8081');
-      print('   - 192.168.1.103:8081 (from emulator to host)');
-      print('   - 0.0.0.0:8081 (all interfaces)');
 
       _server!.listen((HttpRequest request) async {
         print('Received request: ${request.method} ${request.uri.path}');
