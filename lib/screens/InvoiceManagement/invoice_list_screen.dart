@@ -15,6 +15,35 @@ class _InvoiceListScreenState extends State<InvoiceListScreen> {
   String searchQuery = '';
   String filterStatus = 'All';
   final InvoiceController _controller = InvoiceController();
+  bool _isCheckingOverdue = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkAndUpdateOverdueInvoices();
+  }
+
+  // Check and update overdue invoices when screen loads
+  Future<void> _checkAndUpdateOverdueInvoices() async {
+    if (_isCheckingOverdue) return; // Prevent multiple simultaneous calls
+
+    setState(() {
+      _isCheckingOverdue = true;
+    });
+
+    try {
+      await _controller.updateAllOverdueInvoices();
+    } catch (e) {
+      print('Error checking overdue invoices: $e');
+      // Don't show error to user as this is a background operation
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isCheckingOverdue = false;
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -29,8 +58,23 @@ class _InvoiceListScreenState extends State<InvoiceListScreen> {
                 return Text('Something went wrong');
               }
 
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return Center(child: CircularProgressIndicator());
+              if (snapshot.connectionState == ConnectionState.waiting ||
+                  _isCheckingOverdue) {
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      CircularProgressIndicator(),
+                      if (_isCheckingOverdue) ...[
+                        SizedBox(height: 16),
+                        Text(
+                          'Checking overdue invoices...',
+                          style: TextStyle(color: Colors.grey[600]),
+                        ),
+                      ],
+                    ],
+                  ),
+                );
               }
 
               final invoices = snapshot.data!.docs;
@@ -167,24 +211,41 @@ class _InvoiceListScreenState extends State<InvoiceListScreen> {
                   );
                 }
 
-                // Sort: Pending status always at top, then by date
+                // Sort: Custom priority order - Pending → Overdue → Unpaid → Paid, then by date
                 invoices.sort((a, b) {
                   final aData = a.data() as Map<String, dynamic>;
                   final bData = b.data() as Map<String, dynamic>;
                   final aStatus = aData['status'] as String;
                   final bStatus = bData['status'] as String;
 
-                  // Check if either status contains "Pending"
-                  final aIsPending = aStatus.toLowerCase().contains('pending');
-                  final bIsPending = bStatus.toLowerCase().contains('pending');
+                  // Define priority order: Pending → Overdue → Unpaid → Paid
+                  int getStatusPriority(String status) {
+                    switch (status.toLowerCase()) {
+                      case 'pending':
+                        return 1;
+                      case 'overdue':
+                        return 2;
+                      case 'unpaid':
+                        return 3;
+                      case 'paid':
+                        return 4;
+                      default:
+                        return 5; // Any other status goes last
+                    }
+                  }
 
-                  if (aIsPending && !bIsPending) return -1;
-                  if (!aIsPending && bIsPending) return 1;
+                  final aPriority = getStatusPriority(aStatus);
+                  final bPriority = getStatusPriority(bStatus);
 
-                  // If both are pending or both are not pending, sort by date
+                  // First sort by status priority
+                  if (aPriority != bPriority) {
+                    return aPriority.compareTo(bPriority);
+                  }
+
+                  // If same status, sort by date (most recent first)
                   final aDate = (aData['date'] as Timestamp).toDate();
                   final bDate = (bData['date'] as Timestamp).toDate();
-                  return bDate.compareTo(aDate); // Most recent first
+                  return bDate.compareTo(aDate);
                 });
 
                 return ListView.builder(

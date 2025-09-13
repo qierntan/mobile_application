@@ -83,7 +83,7 @@ class InvoiceController {
     }
   }
 
-  // Check and update overdue status
+  // Check and update overdue status for a single invoice
   Future<void> checkAndUpdateOverdueStatus(String invoiceId) async {
     final now = DateTime.now();
     final doc = await _firestore.collection('Invoice').doc(invoiceId).get();
@@ -98,6 +98,43 @@ class InvoiceController {
           'status': 'Overdue',
         });
       }
+    }
+  }
+
+  // Batch update all overdue invoices
+  Future<void> updateAllOverdueInvoices() async {
+    try {
+      final now = DateTime.now();
+
+      // Get all unpaid invoices
+      final QuerySnapshot snapshot =
+          await _firestore
+              .collection('Invoice')
+              .where('status', isEqualTo: 'Unpaid')
+              .get();
+
+      final WriteBatch batch = _firestore.batch();
+      int updateCount = 0;
+
+      for (final doc in snapshot.docs) {
+        final data = doc.data() as Map<String, dynamic>;
+        final dueDate = (data['dueDate'] as Timestamp).toDate();
+
+        // Check if invoice is overdue
+        if (now.isAfter(dueDate)) {
+          batch.update(doc.reference, {'status': 'Overdue'});
+          updateCount++;
+        }
+      }
+
+      // Commit batch update if there are any changes
+      if (updateCount > 0) {
+        await batch.commit();
+        print('Updated $updateCount invoices to Overdue status');
+      }
+    } catch (e) {
+      print('Error updating overdue invoices: $e');
+      throw Exception('Failed to update overdue invoices: $e');
     }
   }
 

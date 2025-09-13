@@ -96,14 +96,19 @@ class _ReportingScreenState extends State<ReportingScreen> {
           invoices.docs.where((doc) {
             final data = doc.data() as Map<String, dynamic>;
 
-            // Use date field for filtering
-            if (data['date'] != null) {
-              final date = (data['date'] as Timestamp).toDate();
+            // Use paymentDate for paid invoices, fallback to date field
+            final dateToUse = data['paymentDate'] ?? data['date'];
+            if (dateToUse != null) {
+              final rawDateTime = (dateToUse as Timestamp).toDate();
+              // Add 8 hours to match UTC+8 timezone as shown in database
+              final date = rawDateTime.add(Duration(hours: 8));
               final isInMonth =
                   date.year == selectedYear && date.month == selectedMonth;
 
               if (isInMonth) {
-                print('DEBUG: Found invoice ${doc.id} with date: $date');
+                print(
+                  'DEBUG: Found invoice ${doc.id} with date: $date (using ${data['paymentDate'] != null ? 'paymentDate' : 'date'})',
+                );
               }
 
               return isInMonth;
@@ -141,7 +146,11 @@ class _ReportingScreenState extends State<ReportingScreen> {
       // Try multiple field names to find the amount
       final amount = (data['total'] ?? data['totalAmount'] ?? 0) as num;
       final amountDouble = amount.toDouble();
-      final date = (data['date'] as Timestamp).toDate();
+      // Use paymentDate for paid invoices, fallback to date field
+      final dateToUse = data['paymentDate'] ?? data['date'];
+      final rawDateTime = (dateToUse as Timestamp).toDate();
+      // Add 8 hours to match UTC+8 timezone as shown in database
+      final date = rawDateTime.add(Duration(hours: 8));
       final paymentMethod = data['paymentMethod'] as String? ?? 'Unknown';
       final customerName = data['customerName'] as String? ?? 'Unknown';
 
@@ -251,9 +260,17 @@ class _ReportingScreenState extends State<ReportingScreen> {
         final amount = (data['total'] ?? data['totalAmount'] ?? 0) as num;
         final amountDouble = amount.toDouble();
 
-        // Use date field for day calculation
-        final transactionDate = (data['date'] as Timestamp).toDate();
-        print('DEBUG: Using date: $transactionDate');
+        // Use paymentDate for paid invoices, fallback to date field
+        final dateToUse = data['paymentDate'] ?? data['date'];
+        // Get the raw timestamp and manually handle timezone to match database display
+        final rawDateTime = (dateToUse as Timestamp).toDate();
+        // Add 8 hours to match UTC+8 timezone as shown in database
+        final transactionDate = rawDateTime.add(Duration(hours: 8));
+        print(
+          'DEBUG: Using field: ${data['paymentDate'] != null ? 'paymentDate' : 'date'}',
+        );
+        print('DEBUG: Raw timestamp: $rawDateTime');
+        print('DEBUG: Adjusted for UTC+8: $transactionDate');
 
         final day = transactionDate.day;
         final paymentMethod = data['paymentMethod'] as String? ?? 'Unknown';

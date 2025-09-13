@@ -575,6 +575,35 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
                         ],
                         if (widget.invoice.status == 'Overdue') ...[
                           ElevatedButton.icon(
+                            onPressed: () {
+                              showModalBottomSheet(
+                                context: context,
+                                isScrollControlled: true,
+                                builder:
+                                    (_) => _PaymentMethodDialog(
+                                      onPaid: (method, note) {
+                                        _markAsPaid(method, note);
+                                      },
+                                    ),
+                              );
+                            },
+                            icon: Icon(Icons.attach_money, color: Colors.white),
+                            label: Text('Mark as Paid'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Color.fromARGB(
+                                255,
+                                61,
+                                248,
+                                123,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              minimumSize: Size.fromHeight(48),
+                            ),
+                          ),
+                          SizedBox(height: 12),
+                          ElevatedButton.icon(
                             onPressed: () async {
                               try {
                                 await sendReminderEmail();
