@@ -3,6 +3,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:mobile_application/screens/Customer/customer_list_screen.dart';
 import 'package:mobile_application/screens/login_screen.dart';
 import 'package:mobile_application/screens/dashboard_screen.dart';
+import 'package:mobile_application/services/notification_service.dart';
 import 'firebase_options.dart';
 
 void main() async {
@@ -10,6 +11,10 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+  
+  // Initialize notification service
+  await NotificationService().initialize();
+  
   runApp(const MainApp());
 }
 
