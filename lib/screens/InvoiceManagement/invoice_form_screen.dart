@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:mobile_application/model/invoice.dart';
+import 'package:mobile_application/model/invoice_management/invoice.dart';
 
 class InvoiceFormScreen extends StatefulWidget {
   final Invoice? invoice;

@@ -1,8 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:mobile_application/model/invoice.dart';
+import 'package:mobile_application/model/invoice_management/invoice.dart';
 import 'package:mobile_application/screens/InvoiceManagement/invoice_details_screen.dart';
+import 'package:mobile_application/controller/invoice_management/invoice_controller.dart';
 import 'invoice_form_screen.dart';
 
 class InvoiceListScreen extends StatefulWidget {
@@ -13,6 +14,7 @@ class InvoiceListScreen extends StatefulWidget {
 class _InvoiceListScreenState extends State<InvoiceListScreen> {
   String searchQuery = '';
   String filterStatus = 'All';
+  final InvoiceController _controller = InvoiceController();
 
   @override
   Widget build(BuildContext context) {
@@ -21,8 +23,7 @@ class _InvoiceListScreenState extends State<InvoiceListScreen> {
         children: [
           // Summary widgets using StreamBuilder
           StreamBuilder<QuerySnapshot>(
-            stream:
-                FirebaseFirestore.instance.collection('Invoice').snapshots(),
+            stream: _controller.getAllInvoicesStream(),
             builder: (context, snapshot) {
               if (snapshot.hasError) {
                 return Text('Something went wrong');
@@ -209,8 +210,6 @@ class _InvoiceListScreenState extends State<InvoiceListScreen> {
                       parts: List<Map<String, dynamic>>.from(
                         data['parts'] ?? [],
                       ),
-                      services: [],
-                      labor: [],
                     );
 
                     return Card(

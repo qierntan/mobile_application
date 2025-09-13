@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:mobile_application/controller/invoice_management/invoice_pdf_controller.dart';
 import 'package:mobile_application/screens/Customer/customer_list_screen.dart';
 import 'package:mobile_application/screens/InvoiceManagement/invoice_list_screen.dart';
-import 'package:mobile_application/screens/InvoiceManagement/invoice_pdf_service.dart';
 import 'package:mobile_application/screens/InvoiceManagement/report.dart';
+import 'package:mobile_application/screens/WorkScheduler/assigned_jobs_screen.dart';
 import 'package:mobile_application/screens/login_screen.dart';
 import 'package:mobile_application/screens/dashboard_screen.dart';
 import 'firebase_options.dart';
@@ -12,7 +13,6 @@ import 'package:mobile_application/screens/Inventory/inventory_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-
   // Start the payment success handler with retries
   bool serverStarted = false;
   int retryCount = 0;
@@ -20,7 +20,7 @@ void main() async {
 
   while (!serverStarted && retryCount < maxRetries) {
     try {
-      await InvoicePdfService.setupPaymentSuccessHandler();
+      await InvoicePdfController.setupPaymentSuccessHandler();
       print('Payment success handler started successfully');
       serverStarted = true;
     } catch (e) {
@@ -35,7 +35,6 @@ void main() async {
       }
     }
   }
-
   runApp(const MainApp());
 }
 
@@ -88,6 +87,9 @@ class _HomeNavigatorState extends State<HomeNavigator> {
         break;
       case 1:
         _selectedScreen = CustomerListScreen();
+        break;
+      case 2:
+        _selectedScreen = AssignedJobsScreen();
         break;
       case 3:
         _selectedScreen = InventoryScreen();

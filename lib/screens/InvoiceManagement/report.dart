@@ -203,7 +203,7 @@ class _ReportingScreenState extends State<ReportingScreen> {
             (a, b) => (b['amount'] as double).compareTo(a['amount'] as double),
           );
 
-    // Convert payment trends
+    // Convert payment trends and sort in descending order by count (number of payments)
     monthlyPaymentTrends =
         paymentMethodCounts.entries
             .map(
@@ -214,9 +214,13 @@ class _ReportingScreenState extends State<ReportingScreen> {
               },
             )
             .toList()
-          ..sort(
-            (a, b) => (b['amount'] as double).compareTo(a['amount'] as double),
-          );
+          ..sort((a, b) {
+            // First sort by count in descending order
+            int countCompare = (b['count'] as int).compareTo(a['count'] as int);
+            if (countCompare != 0) return countCompare;
+            // If counts are equal, sort by amount in descending order
+            return (b['amount'] as double).compareTo(a['amount'] as double);
+          });
 
     // Set default top customers and payment trends to monthly data
     topCustomers = monthlyTopCustomers;
@@ -321,7 +325,7 @@ class _ReportingScreenState extends State<ReportingScreen> {
       specificMonthTopCustomers = [];
     }
 
-    // Convert payment trends for specific month
+    // Convert payment trends for specific month and sort in descending order by count
     try {
       specificMonthPaymentTrends =
           paymentMethodCounts.entries
@@ -333,10 +337,15 @@ class _ReportingScreenState extends State<ReportingScreen> {
                 },
               )
               .toList()
-            ..sort(
-              (a, b) =>
-                  (b['amount'] as double).compareTo(a['amount'] as double),
-            );
+            ..sort((a, b) {
+              // First sort by count in descending order
+              int countCompare = (b['count'] as int).compareTo(
+                a['count'] as int,
+              );
+              if (countCompare != 0) return countCompare;
+              // If counts are equal, sort by amount in descending order
+              return (b['amount'] as double).compareTo(a['amount'] as double);
+            });
     } catch (e) {
       print('ERROR processing payment trends: $e');
       specificMonthPaymentTrends = [];
@@ -750,7 +759,7 @@ class _ReportingScreenState extends State<ReportingScreen> {
                     style: TextStyle(fontWeight: FontWeight.bold),
                   ),
                   subtitle: Text(
-                    '${method['count']} payments • RM ${(method['amount'] as double).toStringAsFixed(2)}',
+                    '${method['count']} payments',
                     style: TextStyle(fontSize: 12),
                   ),
                   trailing: Column(
@@ -764,10 +773,6 @@ class _ReportingScreenState extends State<ReportingScreen> {
                           color: Color(0xFF22211F),
                           fontSize: 14,
                         ),
-                      ),
-                      Text(
-                        '${method['count']} txns',
-                        style: TextStyle(fontSize: 10, color: Colors.grey[600]),
                       ),
                     ],
                   ),

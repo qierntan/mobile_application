@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 
-class _PaymentMethodDialog extends StatefulWidget {
+class PaymentMethodDialog extends StatefulWidget {
   final Function(String method, String note) onPaid;
-  const _PaymentMethodDialog({required this.onPaid});
+  const PaymentMethodDialog({required this.onPaid, super.key});
 
   @override
-  State<_PaymentMethodDialog> createState() => _PaymentMethodDialogState();
+  State<PaymentMethodDialog> createState() => _PaymentMethodDialogState();
 }
 
-class _PaymentMethodDialogState extends State<_PaymentMethodDialog> {
+class _PaymentMethodDialogState extends State<PaymentMethodDialog> {
   String selectedMethod = 'Cash';
   TextEditingController noteController = TextEditingController();
 
