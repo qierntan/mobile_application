@@ -12,11 +12,19 @@ class WarehouseListScreen extends StatefulWidget {
 
 class _WarehouseListScreenState extends State<WarehouseListScreen> {
   final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+  String _sortOrder = 'A-Z'; // A-Z or Z-A
 
   @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  void _toggleSortOrder() {
+    setState(() {
+      _sortOrder = _sortOrder == 'A-Z' ? 'Z-A' : 'A-Z';
+    });
   }
 
   Stream<QuerySnapshot<Map<String, dynamic>>> _warehouseStream(String query) {
@@ -40,21 +48,27 @@ class _WarehouseListScreenState extends State<WarehouseListScreen> {
       ),
       body: Column(
         children: [
+          // Search Bar
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 6, 16, 10),
-            child: TextField(
-              controller: _searchController,
-              onChanged: (_) => setState(() {}),
-              decoration: InputDecoration(
-                hintText: 'Search',
-                prefixIcon: const Icon(Icons.search),
-                filled: true,
-                fillColor: Colors.white,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(24),
-                  borderSide: BorderSide.none,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Material(
+              elevation: 2,
+              borderRadius: BorderRadius.circular(30),
+              child: TextField(
+                controller: _searchController,
+                decoration: InputDecoration(
+                  hintText: 'Search',
+                  prefixIcon: Icon(Icons.search),
+                  border: InputBorder.none,
+                  contentPadding: EdgeInsets.symmetric(vertical: 14),
+                  filled: true,
+                  fillColor: Colors.white,
                 ),
+                onChanged: (value) {
+                  setState(() {
+                    _searchQuery = value.trim().toLowerCase();
+                  });
+                },
               ),
             ),
           ),
@@ -63,9 +77,9 @@ class _WarehouseListScreenState extends State<WarehouseListScreen> {
             child: Row(
               children: [
                 TextButton.icon(
-                  onPressed: () {},
-                  icon: const Icon(Icons.filter_alt_outlined),
-                  label: const Text('Filter By'),
+                  onPressed: _toggleSortOrder,
+                  icon: const Icon(Icons.sort),
+                  label: Text('Sort: $_sortOrder'),
                   style: TextButton.styleFrom(
                     foregroundColor: Colors.black87,
                     backgroundColor: Colors.white,
@@ -102,15 +116,23 @@ class _WarehouseListScreenState extends State<WarehouseListScreen> {
                 }
                 final docs = snapshot.data?.docs ?? [];
 
-                // Client-side filtering to match search
-                final query = _searchController.text.trim().toLowerCase();
+                // Client-side search and sort
                 final filtered = docs.where((d) {
-                  if (query.isEmpty) return true;
+                  if (_searchQuery.isEmpty) return true;
                   final data = d.data();
                   final name = (data['warehouseName'] ?? '').toString().toLowerCase();
                   final region = (data['region'] ?? '').toString().toLowerCase();
-                  return name.contains(query) || region.contains(query) || d.id.toLowerCase().contains(query);
+                  return name.contains(_searchQuery) || region.contains(_searchQuery) || d.id.toLowerCase().contains(_searchQuery);
                 }).toList();
+
+                // Sort by warehouse name
+                filtered.sort((a, b) {
+                  final nameA = (a.data()['warehouseName'] ?? '').toString().toLowerCase();
+                  final nameB = (b.data()['warehouseName'] ?? '').toString().toLowerCase();
+                  return _sortOrder == 'A-Z' 
+                      ? nameA.compareTo(nameB)
+                      : nameB.compareTo(nameA);
+                });
 
                 if (filtered.isEmpty) {
                   return const Center(child: Text('No warehouses found'));

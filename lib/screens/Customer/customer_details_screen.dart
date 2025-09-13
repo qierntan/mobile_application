@@ -11,9 +11,9 @@ class CustomerDetailsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xFFF5F5F5),
+      backgroundColor: Color(0xFFF5F3EF),
       appBar: AppBar(
-        backgroundColor: Color(0xFFF5F5F5),
+        backgroundColor: Color(0xFFF5F3EF),
         elevation: 0,
         leading: IconButton(
           icon: Icon(Icons.arrow_back, color: Colors.black),
