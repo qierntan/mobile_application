@@ -11,12 +11,20 @@ class InventoryScreen extends StatefulWidget {
 
 class _InventoryScreenState extends State<InventoryScreen> {
   final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+  String _sortOrder = 'A-Z'; // A-Z or Z-A
   final GlobalKey _menuKey = GlobalKey();
 
   @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  void _toggleSortOrder() {
+    setState(() {
+      _sortOrder = _sortOrder == 'A-Z' ? 'Z-A' : 'A-Z';
+    });
   }
 
   Stream<QuerySnapshot<Map<String, dynamic>>> _partsStream() {
@@ -27,30 +35,32 @@ class _InventoryScreenState extends State<InventoryScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F3EF),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFFF5F3EF),
-        elevation: 0,
-      ),
       body: Column(
         children: [
+          // Search Bar with Menu
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: Row(
               children: [
                 Expanded(
-                  child: TextField(
-                    controller: _searchController,
-                    onChanged: (_) => setState(() {}),
-                    decoration: InputDecoration(
-                      hintText: 'Search',
-                      prefixIcon: const Icon(Icons.search),
-                      filled: true,
-                      fillColor: Colors.white,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(24),
-                        borderSide: BorderSide.none,
+                  child: Material(
+                    elevation: 2,
+                    borderRadius: BorderRadius.circular(30),
+                    child: TextField(
+                      controller: _searchController,
+                      decoration: InputDecoration(
+                        hintText: 'Search',
+                        prefixIcon: Icon(Icons.search),
+                        border: InputBorder.none,
+                        contentPadding: EdgeInsets.symmetric(vertical: 14),
+                        filled: true,
+                        fillColor: Colors.white,
                       ),
+                      onChanged: (value) {
+                        setState(() {
+                          _searchQuery = value.trim().toLowerCase();
+                        });
+                      },
                     ),
                   ),
                 ),
@@ -80,9 +90,9 @@ class _InventoryScreenState extends State<InventoryScreen> {
             child: Row(
               children: [
                 TextButton.icon(
-                  onPressed: () {},
-                  icon: const Icon(Icons.filter_alt_outlined),
-                  label: const Text('Filter By'),
+                  onPressed: _toggleSortOrder,
+                  icon: const Icon(Icons.sort),
+                  label: Text('Sort: $_sortOrder'),
                   style: TextButton.styleFrom(
                     foregroundColor: Colors.black87,
                     backgroundColor: Colors.white,
@@ -113,15 +123,23 @@ class _InventoryScreenState extends State<InventoryScreen> {
                 }
                 final docs = snapshot.data?.docs ?? [];
 
-                // simple client-side search
-                final q = _searchController.text.trim().toLowerCase();
+                // Client-side search and sort
                 final filtered = docs.where((d) {
-                  if (q.isEmpty) return true;
+                  if (_searchQuery.isEmpty) return true;
                   final data = d.data();
                   final name = (data['Name'] ?? '').toString().toLowerCase();
                   final id = d.id.toLowerCase();
-                  return name.contains(q) || id.contains(q);
+                  return name.contains(_searchQuery) || id.contains(_searchQuery);
                 }).toList();
+
+                // Sort by name
+                filtered.sort((a, b) {
+                  final nameA = (a.data()['Name'] ?? '').toString().toLowerCase();
+                  final nameB = (b.data()['Name'] ?? '').toString().toLowerCase();
+                  return _sortOrder == 'A-Z' 
+                      ? nameA.compareTo(nameB)
+                      : nameB.compareTo(nameA);
+                });
 
                 if (filtered.isEmpty) {
                   return const Center(child: Text('No parts found'));
@@ -134,7 +152,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                     final doc = filtered[index];
                     final data = doc.data();
                     final name = (data['Name'] ?? 'Unknown').toString();
-                    final price = (data['Price'] ?? 0).toString();
+                    // final price = (data['Price'] ?? 0).toString(); // Removed unused variable
                     final qty = (data['Quantity'] ?? 0) as int;
                     final threshold = (data['Threshold'] ?? 0) as int;
                     final statusLow = qty <= threshold;
