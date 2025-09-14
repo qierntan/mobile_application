@@ -1,0 +1,5 @@
+Get ipv4 address => cmd -> ipconfig -> copy ipv4Address -> paste into code (Uri.parse('http://192.168.1.113(change this):4242/create-checkout-session')) -> done.
+
+Run stripe backend => cmd -> cd desktop -> cd stripe_backend > node index.js -> done
+
+exit = ctrl + c
