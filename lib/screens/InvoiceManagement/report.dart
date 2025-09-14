@@ -385,6 +385,41 @@ class _ReportingScreenState extends State<ReportingScreen> {
     final nonZeroDays =
         dailyData.where((d) => (d['sales'] as double) > 0).toList();
 
+    // Define a consistent color palette for days
+    final List<Color> dayColors = [
+      Color(0xFF2196F3),
+      Color(0xFF4CAF50),
+      Color(0xFFFF9800),
+      Color(0xFFE91E63),
+      Color(0xFF9C27B0),
+      Color(0xFF00BCD4),
+      Color(0xFFFFC107),
+      Color(0xFF795548),
+      Color(0xFF607D8B),
+      Color(0xFFFF5722),
+      Color(0xFF3F51B5),
+      Color(0xFF009688),
+      Color(0xFFCDDC39),
+      Color(0xFFFF7043),
+      Color(0xFF42A5F5),
+      Color(0xFF66BB6A),
+      Color(0xFFFFB74D),
+      Color(0xFFEF5350),
+      Color(0xFFAB47BC),
+      Color(0xFF26C6DA),
+      Color(0xFFFFCA28),
+      Color(0xFF8D6E63),
+      Color(0xFF78909C),
+      Color(0xFFFF8A65),
+      Color(0xFF5C6BC0),
+      Color(0xFF26A69A),
+      Color(0xFFD4E157),
+      Color(0xFFFFCC02),
+      Color(0xFF29B6F6),
+      Color(0xFF7CB342),
+      Color(0xFFFFB300),
+    ];
+
     // Create pie chart data
     final pieData =
         nonZeroDays.map((d) {
@@ -396,12 +431,15 @@ class _ReportingScreenState extends State<ReportingScreen> {
                   .map((d) => d['sales'] as double)
                   .reduce((a, b) => a > b ? a : b);
 
+          // Use day number for consistent coloring (day 1-31)
+          final color =
+              isMax
+                  ? Color(0xFFFFC700)
+                  : dayColors[(day - 1) % dayColors.length];
+
           return PieChartSectionData(
             value: value,
-            color:
-                isMax
-                    ? Color(0xFFFFC700)
-                    : Colors.primaries[day % Colors.primaries.length],
+            color: color,
             title: 'Day $day',
             radius: isMax ? 50 : 40,
             titleStyle: TextStyle(
@@ -565,18 +603,53 @@ class _ReportingScreenState extends State<ReportingScreen> {
     final nonZeroData =
         detailsData.where((d) => (d['sales'] as double) > 0).toList();
 
+    // Define consistent colors for each month
+    final List<Color> monthColors = [
+      Color(0xFF2196F3), // Jan - Blue
+      Color(0xFF4CAF50), // Feb - Green
+      Color(0xFFFF9800), // Mar - Orange
+      Color(0xFFE91E63), // Apr - Pink
+      Color(0xFF9C27B0), // May - Purple
+      Color(0xFF00BCD4), // Jun - Cyan
+      Color(0xFFFFC107), // Jul - Amber
+      Color(0xFF795548), // Aug - Brown
+      Color(0xFF607D8B), // Sep - Blue Grey
+      Color(0xFFFF5722), // Oct - Deep Orange
+      Color(0xFF3F51B5), // Nov - Indigo
+      Color(0xFF009688), // Dec - Teal
+    ];
+
     final pieData =
         nonZeroData.map((d) {
           final value = d['sales'] as double;
+          final monthName = d['month'] as String;
           final isMax = maxItem != null && d == maxItem;
+
+          // Get month index from month name for consistent coloring
+          final monthNames = [
+            'Jan',
+            'Feb',
+            'Mar',
+            'Apr',
+            'May',
+            'Jun',
+            'Jul',
+            'Aug',
+            'Sep',
+            'Oct',
+            'Nov',
+            'Dec',
+          ];
+          final monthIndex = monthNames.indexOf(monthName);
+          final color =
+              isMax
+                  ? Color(0xFFFFC700)
+                  : (monthIndex >= 0 ? monthColors[monthIndex] : Colors.grey);
+
           return PieChartSectionData(
             value: value,
-            color:
-                isMax
-                    ? Color(0xFFFFC700)
-                    : Colors.primaries[detailsData.indexOf(d) %
-                        Colors.primaries.length],
-            title: '${d['month']}',
+            color: color,
+            title: monthName,
             radius: isMax ? 50 : 40,
             titleStyle: TextStyle(
               fontWeight: FontWeight.bold,

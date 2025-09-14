@@ -23,6 +23,7 @@ dependencies:
   just_audio: ^0.9.39
   flutter_local_notifications: ^19.4.1
   firebase_messaging: ^16.0.1
+  shared_preferences: ^2.2.3
 
 dependency_overrides:
   record_linux: ^1.2.1

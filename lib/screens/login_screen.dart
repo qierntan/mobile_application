@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_application/main.dart';
+import 'package:mobile_application/services/remember_me_service.dart';
 
 class LoginScreen extends StatefulWidget {
   @override
@@ -10,19 +11,54 @@ class _LoginScreenState extends State<LoginScreen> {
   final _usernameController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _rememberMe = false;
+  bool _isLoading = false;
 
-  void _login() {
-    // Simple authentication - in real app, validate against backend
-    if (_usernameController.text.isNotEmpty && _passwordController.text.isNotEmpty) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => HomeNavigator()),
-      );
-    } else {
+  @override
+  void initState() {
+    super.initState();
+    _loadSavedCredentials();
+  }
+
+  /// Load saved credentials if they exist and are still valid
+  void _loadSavedCredentials() async {
+    final credentials = await RememberMeService.getSavedCredentials();
+    if (credentials['isValid'] as bool) {
+      setState(() {
+        _usernameController.text = credentials['username'] as String;
+        _passwordController.text = credentials['password'] as String;
+        _rememberMe = credentials['rememberMe'] as bool;
+      });
+    }
+  }
+
+  void _login() async {
+    if (_usernameController.text.isEmpty || _passwordController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Please enter username and password')),
       );
+      return;
     }
+
+    setState(() {
+      _isLoading = true;
+    });
+
+    // Save credentials if remember me is checked
+    await RememberMeService.saveCredentials(
+      username: _usernameController.text,
+      password: _passwordController.text,
+      rememberMe: _rememberMe,
+    );
+
+    // Simple authentication - in real app, validate against backend
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => HomeNavigator()),
+    );
+
+    setState(() {
+      _isLoading = false;
+    });
   }
 
   @override
@@ -56,7 +92,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
               SizedBox(height: 60),
-              
+
               // Sign in text
               Text(
                 'Sign in',
@@ -67,7 +103,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
               SizedBox(height: 40),
-              
+
               // Username field
               Container(
                 decoration: BoxDecoration(
@@ -87,12 +123,15 @@ class _LoginScreenState extends State<LoginScreen> {
                     hintText: 'Username',
                     hintStyle: TextStyle(color: Colors.grey[400]),
                     border: InputBorder.none,
-                    contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 16,
+                    ),
                   ),
                 ),
               ),
               SizedBox(height: 20),
-              
+
               // Password field
               Container(
                 decoration: BoxDecoration(
@@ -113,12 +152,15 @@ class _LoginScreenState extends State<LoginScreen> {
                     hintText: 'Password',
                     hintStyle: TextStyle(color: Colors.grey[400]),
                     border: InputBorder.none,
-                    contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 16,
+                    ),
                   ),
                 ),
               ),
               SizedBox(height: 20),
-              
+
               // Remember me checkbox
               Row(
                 children: [
@@ -137,23 +179,30 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                   ),
-                  Text(
-                    'Remember me',
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Color(0xFF2E2E2E),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Remember me',
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: Color(0xFF2E2E2E),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
               ),
               SizedBox(height: 40),
-              
+
               // Login button
               Container(
                 width: double.infinity,
                 height: 50,
                 child: ElevatedButton(
-                  onPressed: _login,
+                  onPressed: _isLoading ? null : _login,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Color(0xFF2E7D32),
                     shape: RoundedRectangleBorder(
@@ -161,14 +210,24 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                     elevation: 5,
                   ),
-                  child: Text(
-                    'Login',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
-                    ),
-                  ),
+                  child:
+                      _isLoading
+                          ? SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
+                          )
+                          : Text(
+                            'Login',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w600,
+                              color: Colors.white,
+                            ),
+                          ),
                 ),
               ),
             ],
