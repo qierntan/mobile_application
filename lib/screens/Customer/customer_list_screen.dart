@@ -13,11 +13,18 @@ class CustomerListScreen extends StatefulWidget {
 class _CustomerListScreenState extends State<CustomerListScreen> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
+  String _sortOrder = 'A-Z';
 
   @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
+  }
+
+  void _toggleSortOrder() {
+    setState(() {
+      _sortOrder = _sortOrder == 'A-Z' ? 'Z-A' : 'A-Z';
+    });
   }
 
   @override
@@ -53,6 +60,27 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
               ),
             ),
           ),
+          // Sort Button
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: Row(
+              children: [
+                TextButton.icon(
+                  onPressed: _toggleSortOrder,
+                  icon: const Icon(Icons.sort),
+                  label: Text('Sort: $_sortOrder'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: Colors.black87,
+                    backgroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+                const Spacer(),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
           // Customer List
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
@@ -77,6 +105,18 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
                             email.contains(_searchQuery) ||
                             phone.contains(_searchQuery);
                       }).toList();
+
+                // Sort by name
+                filteredDocs.sort((a, b) {
+                  final dataA = a.data() as Map<String, dynamic>?;
+                  final dataB = b.data() as Map<String, dynamic>?;
+                  final nameA = (dataA?['cusName'] ?? '').toString().toLowerCase();
+                  final nameB = (dataB?['cusName'] ?? '').toString().toLowerCase();
+                  return _sortOrder == 'A-Z' 
+                      ? nameA.compareTo(nameB)
+                      : nameB.compareTo(nameA);
+                });
+
 
                 if (filteredDocs.isEmpty) {
                   return Center(child: Text('No customers found.'));
