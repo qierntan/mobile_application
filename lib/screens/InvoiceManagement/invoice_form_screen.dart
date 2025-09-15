@@ -210,7 +210,7 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
       return false;
     }
     if (selectedVehicle == null) {
-      _showError('Please select a vehicle number.');
+      _showError('Please select a vehicle Id.');
       return false;
     }
     final vehicles = customerVehicles[selectedCustomer] ?? const <String>[];
@@ -348,7 +348,7 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
               // Update the vehicle dropdown section
               DropdownButtonFormField<String>(
                 decoration: InputDecoration(
-                  labelText: 'Vehicle Number',
+                  labelText: 'Vehicle Id',
                   contentPadding: EdgeInsets.symmetric(
                     horizontal: 16,
                     vertical: 14,
@@ -383,12 +383,12 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
                 validator:
                     (value) =>
                         value == null || value.isEmpty
-                            ? 'Please select a vehicle number'
+                            ? 'Please select a vehicle Id'
                             : null,
                 hint: Text(
                   selectedCustomer == null
                       ? 'Select a customer first'
-                      : 'Select Vehicle Number',
+                      : 'Select Vehicle Id',
                 ),
               ),
               SizedBox(height: 12),

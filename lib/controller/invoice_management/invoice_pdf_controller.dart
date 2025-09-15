@@ -152,7 +152,7 @@ class InvoicePdfController {
                           pw.SizedBox(height: 8),
                           pw.Text('Invoice ID: ${invoice.id}'),
                           pw.Text('Customer: ${invoice.customerName}'),
-                          pw.Text('Vehicle: ${invoice.vehicleId}'),
+                          pw.Text('Vehicle Id: ${invoice.vehicleId}'),
                         ],
                       ),
                       pw.Column(
@@ -401,7 +401,7 @@ class InvoicePdfController {
               <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; margin: 20px 0;">
                 <h3 style="margin-top: 0;">Payment Details:</h3>
                 <p style="margin: 5px 0;">Invoice ID: #${invoice.id}</p>
-                <p style="margin: 5px 0;">Vehicle Number: ${invoice.vehicleId}</p>
+                <p style="margin: 5px 0;">Vehicle Id: ${invoice.vehicleId}</p>
                 <p style="margin: 5px 0;">Payment Date: ${DateFormat('dd/MM/yyyy').format(DateTime.now())}</p>
                 <p style="margin: 5px 0;">Total Amount Paid: RM ${invoice.total.toStringAsFixed(2)}</p>
               </div>

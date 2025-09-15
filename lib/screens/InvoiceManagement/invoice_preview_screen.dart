@@ -56,7 +56,7 @@ class InvoicePreviewScreen extends StatelessWidget {
                     SizedBox(height: 8),
                     Text('Invoice ID: ${invoice.id}'),
                     Text('Customer: ${invoice.customerName}'),
-                    Text('Vehicle: ${invoice.vehicleId}'),
+                    Text('Vehicle Id: ${invoice.vehicleId}'),
                   ],
                 ),
                 Column(

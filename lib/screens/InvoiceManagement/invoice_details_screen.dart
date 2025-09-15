@@ -143,7 +143,7 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
             
             <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; margin: 20px 0;">
               <h3 style="margin-top: 0;">Invoice Details:</h3>
-              <p style="margin: 5px 0;">Vehicle Number: ${invoiceData['vehicleId'] ?? ''}</p>
+              <p style="margin: 5px 0;">Vehicle Id: ${invoiceData['vehicleId'] ?? ''}</p>
               <p style="margin: 5px 0;">Invoice Date: ${DateFormat('dd/MM/yyyy').format((invoiceData['date'] as Timestamp).toDate())}</p>
               <p style="margin: 5px 0;">Due Date: ${DateFormat('dd/MM/yyyy').format((invoiceData['dueDate'] as Timestamp).toDate())}</p>
             </div>
@@ -327,7 +327,7 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
                         ),
                         SizedBox(height: 4),
                         Text(
-                          'Vehicle: ${data['vehicleId'] ?? ''}',
+                          'Vehicle Id: ${data['vehicleId'] ?? ''}',
                           style: TextStyle(color: Color(0xFF22211F)),
                         ),
                         Text(
