@@ -36,74 +36,61 @@ class DashboardController {
   /// Get invoice statistics for dashboard
   Future<Map<String, dynamic>> getInvoiceStatistics() async {
     try {
-      final List<Invoice> invoices = await getAllInvoices();
+      final QuerySnapshot invoiceSnapshot =
+          await FirebaseFirestore.instance.collection('Invoice').get();
 
-      if (invoices.isEmpty) {
-        return {
-          'totalEarnings': 0.0,
-          'paidCount': 0,
-          'unpaidCount': 0,
-          'paidPercentage': 0.0,
-          'unpaidPercentage': 0.0,
-          'paidAmount': 0.0,
-          'unpaidAmount': 0.0,
-        };
+      double totalEarnings = 0.0;
+      double paidAmount = 0.0;
+      double unpaidAmount = 0.0;
+      int paidCount = 0;
+      int unpaidCount = 0;
+
+      for (var doc in invoiceSnapshot.docs) {
+        final data = doc.data() as Map<String, dynamic>;
+        final String status = (data['status'] ?? '').toString().toLowerCase();
+        final double amount = (data['totalAmount'] ?? 0.0).toDouble();
+
+        // Only count invoices that are specifically "paid" or "unpaid"
+        if (status == 'paid') {
+          paidAmount += amount;
+          paidCount++;
+          totalEarnings += amount;
+        } else if (status == 'unpaid') {
+          unpaidAmount += amount;
+          unpaidCount++;
+          totalEarnings += amount;
+        }
+        // Ignore other statuses like "pending", "draft", etc.
       }
 
-      // Separate paid and unpaid invoices
-      final paidInvoices =
-          invoices
-              .where((invoice) => invoice.status.toLowerCase() == 'paid')
-              .toList();
-      final unpaidInvoices =
-          invoices
-              .where(
-                (invoice) =>
-                    invoice.status.toLowerCase() == 'unpaid' ||
-                    invoice.status.toLowerCase() == 'pending',
-              )
-              .toList();
-
-      // Calculate amounts
-      final double paidAmount = paidInvoices.fold(
-        0.0,
-        (sum, invoice) => sum + invoice.total,
-      );
-      final double unpaidAmount = unpaidInvoices.fold(
-        0.0,
-        (sum, invoice) => sum + invoice.total,
-      );
-      final double totalEarnings = paidAmount + unpaidAmount;
-
-      // Calculate percentages
-      final int totalCount = invoices.length;
-      final int paidCount = paidInvoices.length;
-      final int unpaidCount = unpaidInvoices.length;
-
+      // Calculate percentages based only on paid + unpaid total
+      final double paidUnpaidTotal = paidAmount + unpaidAmount;
       final double paidPercentage =
-          totalCount > 0 ? (paidCount / totalCount) * 100 : 0.0;
+          paidUnpaidTotal > 0 ? (paidAmount / paidUnpaidTotal) * 100 : 0.0;
       final double unpaidPercentage =
-          totalCount > 0 ? (unpaidCount / totalCount) * 100 : 0.0;
+          paidUnpaidTotal > 0 ? (unpaidAmount / paidUnpaidTotal) * 100 : 0.0;
 
       return {
         'totalEarnings': totalEarnings,
+        'paidAmount': paidAmount,
+        'unpaidAmount': unpaidAmount,
         'paidCount': paidCount,
         'unpaidCount': unpaidCount,
         'paidPercentage': paidPercentage,
         'unpaidPercentage': unpaidPercentage,
-        'paidAmount': paidAmount,
-        'unpaidAmount': unpaidAmount,
+        'totalInvoices': paidCount + unpaidCount, // Only paid + unpaid invoices
       };
     } catch (e) {
-      print('Error calculating invoice statistics: $e');
+      print('Error fetching invoice statistics: $e');
       return {
         'totalEarnings': 0.0,
+        'paidAmount': 0.0,
+        'unpaidAmount': 0.0,
         'paidCount': 0,
         'unpaidCount': 0,
         'paidPercentage': 0.0,
         'unpaidPercentage': 0.0,
-        'paidAmount': 0.0,
-        'unpaidAmount': 0.0,
+        'totalInvoices': 0,
       };
     }
   }

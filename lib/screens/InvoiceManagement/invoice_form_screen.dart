@@ -299,7 +299,8 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
       ),
       body: Form(
         key: _formKey,
-        autovalidateMode: AutovalidateMode.onUserInteraction,
+        autovalidateMode:
+            AutovalidateMode.disabled, // Changed from onUserInteraction
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(16.0),
           child: Column(
