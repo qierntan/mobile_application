@@ -56,7 +56,7 @@ class InvoicePreviewScreen extends StatelessWidget {
                     SizedBox(height: 8),
                     Text('Invoice ID: ${invoice.id}'),
                     Text('Customer: ${invoice.customerName}'),
-                    Text('Vehicle: ${invoice.vehicleNumber}'),
+                    Text('Vehicle: ${invoice.vehicleId}'),
                   ],
                 ),
                 Column(
@@ -130,7 +130,7 @@ class InvoicePreviewScreen extends StatelessWidget {
                 final updatedInvoice = Invoice(
                   id: invoice.id,
                   customerName: data['customerName'] ?? '',
-                  vehicleNumber: data['vehicleNumber'] ?? '',
+                  vehicleId: data['vehicleId'] ?? '',
                   date: (data['date'] as Timestamp).toDate(),
                   dueDate: (data['dueDate'] as Timestamp).toDate(),
                   subtotal: (data['subtotal'] ?? 0.0).toDouble(),

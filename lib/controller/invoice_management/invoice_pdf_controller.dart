@@ -152,7 +152,7 @@ class InvoicePdfController {
                           pw.SizedBox(height: 8),
                           pw.Text('Invoice ID: ${invoice.id}'),
                           pw.Text('Customer: ${invoice.customerName}'),
-                          pw.Text('Vehicle: ${invoice.vehicleNumber}'),
+                          pw.Text('Vehicle: ${invoice.vehicleId}'),
                         ],
                       ),
                       pw.Column(
@@ -261,7 +261,7 @@ class InvoicePdfController {
         'metadata': {
           'invoice_id': invoice.id,
           'customer_name': invoice.customerName,
-          'vehicle_number': invoice.vehicleNumber,
+          'vehicle_number': invoice.vehicleId,
           'total_amount': invoice.total.toString(),
           'date': DateFormat('yyyy-MM-dd').format(invoice.date),
         },
@@ -303,8 +303,7 @@ class InvoicePdfController {
       final invoice = Invoice(
         id: invoiceId,
         customerName: data['customerName'] ?? 'Unknown Customer',
-        vehicleNumber:
-            data['vehicleNumber'] ?? data['vehicleId'] ?? 'Unknown Vehicle',
+        vehicleId: data['vehicleId'] ?? data['vehicleId'] ?? 'Unknown Vehicle',
         date: (data['date'] as Timestamp?)?.toDate() ?? DateTime.now(),
         dueDate: (data['dueDate'] as Timestamp?)?.toDate() ?? DateTime.now(),
         subtotal: (data['subtotal'] ?? 0.0).toDouble(),
@@ -402,7 +401,7 @@ class InvoicePdfController {
               <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; margin: 20px 0;">
                 <h3 style="margin-top: 0;">Payment Details:</h3>
                 <p style="margin: 5px 0;">Invoice ID: #${invoice.id}</p>
-                <p style="margin: 5px 0;">Vehicle Number: ${invoice.vehicleNumber}</p>
+                <p style="margin: 5px 0;">Vehicle Number: ${invoice.vehicleId}</p>
                 <p style="margin: 5px 0;">Payment Date: ${DateFormat('dd/MM/yyyy').format(DateTime.now())}</p>
                 <p style="margin: 5px 0;">Total Amount Paid: RM ${invoice.total.toStringAsFixed(2)}</p>
               </div>

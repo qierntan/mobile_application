@@ -53,7 +53,7 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
 
       // Initialize form with existing invoice data
       selectedCustomer = widget.invoice!.customerName;
-      selectedVehicle = widget.invoice!.vehicleNumber;
+      selectedVehicle = widget.invoice!.vehicleId;
       dueDate = widget.invoice!.dueDate;
 
       // Initialize discount values

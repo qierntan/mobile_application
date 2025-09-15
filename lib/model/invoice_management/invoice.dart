@@ -3,7 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 class Invoice {
   final String id;
   String customerName;
-  String vehicleNumber;
+  String vehicleId;
   DateTime date;
   DateTime dueDate;
   double subtotal;
@@ -21,7 +21,7 @@ class Invoice {
   Invoice({
     required this.id,
     required this.customerName,
-    required this.vehicleNumber,
+    required this.vehicleId,
     required this.date,
     required this.dueDate,
     required this.subtotal,
@@ -41,7 +41,7 @@ class Invoice {
     return Invoice(
       id: map['id'] ?? '',
       customerName: map['customerName'] ?? '',
-      vehicleNumber: map['vehicleNumber'] ?? '',
+      vehicleId: map['vehicleId'] ?? '',
       date: (map['date'] as Timestamp).toDate(),
       dueDate: (map['dueDate'] as Timestamp).toDate(),
       subtotal: (map['subtotal'] as num).toDouble(),
@@ -65,7 +65,7 @@ class Invoice {
     return {
       'id': id,
       'customerName': customerName,
-      'vehicleNumber': vehicleNumber,
+      'vehicleId': vehicleId,
       'date': Timestamp.fromDate(date),
       'dueDate': Timestamp.fromDate(dueDate),
       'subtotal': subtotal,

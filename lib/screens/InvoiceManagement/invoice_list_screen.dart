@@ -260,7 +260,7 @@ class _InvoiceListScreenState extends State<InvoiceListScreen> {
                     final invoice = Invoice(
                       id: invoices[index].id,
                       customerName: data['customerName'] ?? '',
-                      vehicleNumber: data['vehicleId'] ?? '',
+                      vehicleId: data['vehicleId'] ?? '',
                       date: (data['date'] as Timestamp).toDate(),
                       dueDate:
                           dueDate ?? DateTime.now().add(Duration(days: 30)),
@@ -301,7 +301,7 @@ class _InvoiceListScreenState extends State<InvoiceListScreen> {
                                 ),
                                 SizedBox(width: 4),
                                 Text(
-                                  invoice.vehicleNumber,
+                                  invoice.vehicleId,
                                   style: TextStyle(
                                     color: Colors.grey[700],
                                     fontSize: 13,

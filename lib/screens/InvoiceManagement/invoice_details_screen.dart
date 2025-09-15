@@ -73,7 +73,7 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
       final freshInvoice = Invoice(
         id: widget.invoice.id,
         customerName: invoiceData['customerName'] ?? '',
-        vehicleNumber: invoiceData['vehicleId'] ?? '',
+        vehicleId: invoiceData['vehicleId'] ?? '',
         date: (invoiceData['date'] as Timestamp).toDate(),
         dueDate: (invoiceData['dueDate'] as Timestamp).toDate(),
         subtotal: (invoiceData['subtotal'] ?? 0.0).toDouble(),
@@ -704,7 +704,7 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
                               final updatedInvoice = Invoice(
                                 id: widget.invoice.id,
                                 customerName: data['customerName'] ?? '',
-                                vehicleNumber: data['vehicleId'] ?? '',
+                                vehicleId: data['vehicleId'] ?? '',
                                 date: (data['date'] as Timestamp).toDate(),
                                 dueDate:
                                     (data['dueDate'] as Timestamp).toDate(),
@@ -999,7 +999,7 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
     final invoice = Invoice(
       id: widget.invoice.id,
       customerName: data['customerName'] ?? '',
-      vehicleNumber: data['vehicleNumber'] ?? '',
+      vehicleId: data['vehicleId'] ?? '',
       date: (data['date'] as Timestamp).toDate(),
       dueDate: (data['dueDate'] as Timestamp).toDate(),
       subtotal: (data['subtotal'] ?? 0.0).toDouble(),
