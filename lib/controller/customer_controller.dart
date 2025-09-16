@@ -28,20 +28,6 @@ class CustomerController {
     }
   }
 
-  // Add a new customer
-  Future<String> addCustomer(Customer customer) async {
-    try {
-      final docRef = await _firestore.collection(_collectionName).add(
-        customer.toMap()..addAll({
-          'createdAt': FieldValue.serverTimestamp(),
-          'updatedAt': FieldValue.serverTimestamp(),
-        }),
-      );
-      return docRef.id;
-    } catch (e) {
-      throw Exception('Error adding customer: $e');
-    }
-  }
 
   // Update an existing customer
   Future<void> updateCustomer(String customerId, Customer customer) async {
@@ -56,14 +42,6 @@ class CustomerController {
     }
   }
 
-  // Delete a customer
-  Future<void> deleteCustomer(String customerId) async {
-    try {
-      await _firestore.collection(_collectionName).doc(customerId).delete();
-    } catch (e) {
-      throw Exception('Error deleting customer: $e');
-    }
-  }
 
   // Search customers by name, email, or phone
   List<Customer> searchCustomers(List<Customer> customers, String query) {
@@ -109,6 +87,7 @@ class CustomerController {
       throw Exception('Error checking customer existence: $e');
     }
   }
+
 
   // Get customer count
   Future<int> getCustomerCount() async {

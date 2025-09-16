@@ -5,7 +5,7 @@ import '../../main.dart';
 class ServiceHistoryScreen extends StatefulWidget {
   final String vehicleId;
 
-  const ServiceHistoryScreen({Key? key, required this.vehicleId}) : super(key: key);
+  const ServiceHistoryScreen({super.key, required this.vehicleId});
 
   @override
   _ServiceHistoryScreenState createState() => _ServiceHistoryScreenState();

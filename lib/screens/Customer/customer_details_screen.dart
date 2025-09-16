@@ -6,7 +6,7 @@ import '../../main.dart';
 
 class CustomerDetailsScreen extends StatelessWidget {
   final String customerId;
-  const CustomerDetailsScreen({Key? key, required this.customerId}) : super(key: key);
+  const CustomerDetailsScreen({super.key, required this.customerId});
 
   @override
   Widget build(BuildContext context) {
@@ -53,7 +53,7 @@ class CustomerDetailsScreen extends StatelessWidget {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      // Honda Logo
+                      // Customer Profile Image
                       Container(
                         width: 80,
                         height: 80,
@@ -62,40 +62,56 @@ class CustomerDetailsScreen extends StatelessWidget {
                           shape: BoxShape.circle,
                           border: Border.all(color: Colors.grey.shade300),
                         ),
-                        child: Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Container(
-                                width: 40,
-                                height: 30,
-                                decoration: BoxDecoration(
-                                  color: Colors.red,
-                                  borderRadius: BorderRadius.circular(4),
+                        child: logoUrl.isNotEmpty
+                            ? ClipRRect(
+                                borderRadius: BorderRadius.circular(40),
+                                child: Image.network(
+                                  logoUrl,
+                                  width: 80,
+                                  height: 80,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return Center(
+                                      child: Column(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Icon(
+                                            Icons.person,
+                                            size: 30,
+                                            color: Colors.grey.shade400,
+                                          ),
+                                          Text(
+                                            'No Image',
+                                            style: TextStyle(
+                                              fontSize: 8,
+                                              color: Colors.grey.shade500,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  },
                                 ),
-                                child: Center(
-                                  child: Text(
-                                    'H',
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.bold,
+                              )
+                            : Center(
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.person,
+                                      size: 30,
+                                      color: Colors.grey.shade400,
                                     ),
-                                  ),
+                                    Text(
+                                      'No Image',
+                                      style: TextStyle(
+                                        fontSize: 8,
+                                        color: Colors.grey.shade500,
+                                      ),
+                                    ),
+                                  ],
                                 ),
                               ),
-                              SizedBox(height: 2),
-                              Text(
-                                'HONDA',
-                                style: TextStyle(
-                                  color: Colors.red,
-                                  fontSize: 8,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
                       ),
                       SizedBox(height: 10),
                       Text(name, style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black87)),

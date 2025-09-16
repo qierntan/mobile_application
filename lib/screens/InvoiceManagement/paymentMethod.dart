@@ -57,7 +57,6 @@ class _PaymentMethodDialogState extends State<PaymentMethodDialog> {
               widget.onPaid(selectedMethod, noteController.text);
               Navigator.pop(context);
             },
-            child: Text('Confirm', style: TextStyle(color: Color(0xFF22211F))),
             style: ElevatedButton.styleFrom(
               backgroundColor: Color(0xFFFFC700),
               foregroundColor: Color(0xFF22211F),
@@ -67,6 +66,7 @@ class _PaymentMethodDialogState extends State<PaymentMethodDialog> {
               minimumSize: Size.fromHeight(48),
               textStyle: TextStyle(fontWeight: FontWeight.bold),
             ),
+            child: Text('Confirm', style: TextStyle(color: Color(0xFF22211F))),
           ),
         ],
       ),

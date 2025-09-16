@@ -3,7 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 class WarehouseDetailsScreen extends StatelessWidget {
   final String warehouseId;
-  const WarehouseDetailsScreen({Key? key, required this.warehouseId}) : super(key: key);
+  const WarehouseDetailsScreen({super.key, required this.warehouseId});
 
   @override
   Widget build(BuildContext context) {
@@ -123,7 +123,7 @@ class WarehouseDetailsScreen extends StatelessWidget {
 
 class WarehouseEditScreen extends StatefulWidget {
   final String warehouseId;
-  const WarehouseEditScreen({Key? key, required this.warehouseId}) : super(key: key);
+  const WarehouseEditScreen({super.key, required this.warehouseId});
 
   @override
   State<WarehouseEditScreen> createState() => _WarehouseEditScreenState();
@@ -160,7 +160,7 @@ class _WarehouseEditScreenState extends State<WarehouseEditScreen> {
 
   Future<void> _load() async {
     final snap = await FirebaseFirestore.instance.collection('Warehouse').doc(widget.warehouseId).get();
-    final d = snap.data() as Map<String, dynamic>?;
+    final d = snap.data();
     if (d == null) return;
     _name.text = (d['warehouseName'] ?? '').toString();
     _id.text = widget.warehouseId;

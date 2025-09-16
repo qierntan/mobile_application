@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:mobile_application/services/notification_service.dart';
 import 'package:mobile_application/services/remember_me_service.dart';
 import 'package:mobile_application/controller/dashboard_controller.dart';
 
 class DashboardScreen extends StatefulWidget {
+  const DashboardScreen({super.key});
+
   @override
   _DashboardScreenState createState() => _DashboardScreenState();
 }
@@ -87,7 +88,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     children: [
                       // Notification icon
                       GestureDetector(
-                        onTap: () => _showNotificationOverlay(context),
+                        onTap:
+                            () =>
+                                Navigator.pushNamed(context, '/notifications'),
                         child: Container(
                           padding: EdgeInsets.all(8),
                           decoration: BoxDecoration(
@@ -215,7 +218,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       // Chart
                       Expanded(
                         child: Center(
-                          child: Container(
+                          child: SizedBox(
                             width: 200,
                             height: 200,
                             child:
@@ -368,287 +371,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  void _showNotificationOverlay(BuildContext context) {
-    showDialog(
-      context: context,
-      barrierDismissible: true,
-      builder: (BuildContext context) {
-        return Dialog(
-          alignment: Alignment.topRight,
-          insetPadding: EdgeInsets.only(top: 80, right: 15, left: 15),
-          backgroundColor: Colors.transparent,
-          child: Container(
-            width: MediaQuery.of(context).size.width * 0.85,
-            constraints: BoxConstraints(
-              maxHeight: MediaQuery.of(context).size.height * 0.7,
-            ),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  blurRadius: 10,
-                  offset: Offset(0, 5),
-                ),
-              ],
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Header
-                Container(
-                  padding: EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Color(0xFF5A9FD4),
-                    borderRadius: BorderRadius.only(
-                      topLeft: Radius.circular(16),
-                      topRight: Radius.circular(16),
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.notifications, color: Colors.white),
-                      SizedBox(width: 8),
-                      Text(
-                        'Notifications',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      Spacer(),
-                      GestureDetector(
-                        onTap: () => Navigator.pop(context),
-                        child: Icon(Icons.close, color: Colors.white),
-                      ),
-                    ],
-                  ),
-                ),
-                // Notification items
-                Container(
-                  constraints: BoxConstraints(
-                    maxHeight: MediaQuery.of(context).size.height * 0.55,
-                  ),
-                  child: ListView(
-                    shrinkWrap: true,
-                    children: [
-                      _buildNotificationItem(
-                        'New Reply',
-                        'Good Service',
-                        'Reply',
-                        Icons.chat_bubble_outline,
-                      ),
-                      _buildNotificationItem(
-                        'New Reply',
-                        'I highly prefer this.',
-                        'Reply',
-                        Icons.chat_bubble_outline,
-                      ),
-                      _buildNotificationItem(
-                        'Service Reminder',
-                        'Vehicle ABC123 is due for service',
-                        'View',
-                        Icons.build,
-                      ),
-                      _buildNotificationItem(
-                        'Payment Received',
-                        'RM 250.00 payment confirmed',
-                        'View',
-                        Icons.payment,
-                      ),
-                      Divider(thickness: 2, color: Colors.grey.shade300),
-                      Padding(
-                        padding: EdgeInsets.all(16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Test Notifications',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                                color: Color(0xFF5A9FD4),
-                              ),
-                            ),
-                            SizedBox(height: 12),
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: ElevatedButton.icon(
-                                    onPressed: () {
-                                      NotificationService().showServiceReminder(
-                                        vehicleId: 'ABC123',
-                                        message:
-                                            'Vehicle ABC123 is due for service in 3 days',
-                                      );
-                                      Navigator.pop(context);
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        SnackBar(
-                                          content: Text(
-                                            'Service reminder notification sent!',
-                                          ),
-                                        ),
-                                      );
-                                    },
-                                    icon: Icon(Icons.build, size: 16),
-                                    label: Text(
-                                      'Service',
-                                      style: TextStyle(fontSize: 12),
-                                    ),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: Color(0xFF5A9FD4),
-                                      foregroundColor: Colors.white,
-                                      padding: EdgeInsets.symmetric(
-                                        vertical: 8,
-                                        horizontal: 12,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                SizedBox(width: 8),
-                                Expanded(
-                                  child: ElevatedButton.icon(
-                                    onPressed: () {
-                                      NotificationService()
-                                          .showPaymentNotification(
-                                            amount: '350.00',
-                                            customerId: 'CUST001',
-                                          );
-                                      Navigator.pop(context);
-                                      ScaffoldMessenger.of(
-                                        context,
-                                      ).showSnackBar(
-                                        SnackBar(
-                                          content: Text(
-                                            'Payment notification sent!',
-                                          ),
-                                        ),
-                                      );
-                                    },
-                                    icon: Icon(Icons.payment, size: 16),
-                                    label: Text(
-                                      'Payment',
-                                      style: TextStyle(fontSize: 12),
-                                    ),
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: Colors.green,
-                                      foregroundColor: Colors.white,
-                                      padding: EdgeInsets.symmetric(
-                                        vertical: 8,
-                                        horizontal: 12,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            SizedBox(height: 8),
-                            SizedBox(
-                              width: double.infinity,
-                              child: ElevatedButton.icon(
-                                onPressed: () {
-                                  NotificationService().showNewReplyNotification(
-                                    message:
-                                        'Thank you for the excellent service!',
-                                    customerId: 'CUST002',
-                                  );
-                                  Navigator.pop(context);
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Text('Reply notification sent!'),
-                                    ),
-                                  );
-                                },
-                                icon: Icon(Icons.chat_bubble_outline, size: 16),
-                                label: Text(
-                                  'New Reply',
-                                  style: TextStyle(fontSize: 12),
-                                ),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.orange,
-                                  foregroundColor: Colors.white,
-                                  padding: EdgeInsets.symmetric(
-                                    vertical: 8,
-                                    horizontal: 12,
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildNotificationItem(
-    String title,
-    String message,
-    String action,
-    IconData icon,
-  ) {
-    return Container(
-      padding: EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: Colors.grey.shade200)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Color(0xFF5A9FD4).withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(icon, color: Color(0xFF5A9FD4), size: 20),
-          ),
-          SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                ),
-                SizedBox(height: 4),
-                Text(
-                  message,
-                  style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-            },
-            child: Text(
-              action,
-              style: TextStyle(
-                color: Color(0xFF5A9FD4),
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   void _showProfileOverlay(BuildContext context) {
     showDialog(
       context: context,
@@ -763,9 +485,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   void _showEditProfileDialog(BuildContext context) {
-    final _nameController = TextEditingController(text: 'Admin');
-    final _oldPasswordController = TextEditingController();
-    final _newPasswordController = TextEditingController();
+    final nameController = TextEditingController(text: 'Admin');
+    final oldPasswordController = TextEditingController();
+    final newPasswordController = TextEditingController();
 
     showDialog(
       context: context,
@@ -791,7 +513,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 SizedBox(height: 20),
                 // Name field
                 TextField(
-                  controller: _nameController,
+                  controller: nameController,
                   decoration: InputDecoration(
                     labelText: 'Name',
                     border: OutlineInputBorder(
@@ -804,7 +526,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 SizedBox(height: 16),
                 // Old password field
                 TextField(
-                  controller: _oldPasswordController,
+                  controller: oldPasswordController,
                   obscureText: true,
                   decoration: InputDecoration(
                     labelText: 'Old password',
@@ -818,7 +540,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 SizedBox(height: 16),
                 // New password field
                 TextField(
-                  controller: _newPasswordController,
+                  controller: newPasswordController,
                   obscureText: true,
                   decoration: InputDecoration(
                     labelText: 'New password',

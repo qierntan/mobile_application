@@ -88,3 +88,73 @@ class Customer {
         logoUrl.hashCode;
   }
 }
+
+class CustomerImage {
+  final String customerId;
+  final String customerName;
+  final String? logoUrl;
+  final String? assignedImageFileName;
+
+  CustomerImage({
+    required this.customerId,
+    required this.customerName,
+    this.logoUrl,
+    this.assignedImageFileName,
+  });
+
+  // Create CustomerImage from Firestore document
+  factory CustomerImage.fromMap(Map<String, dynamic> map, String documentId) {
+    return CustomerImage(
+      customerId: documentId,
+      customerName: map['cusName'] ?? '',
+      logoUrl: map['logoUrl'],
+      assignedImageFileName: null, // This will be set separately
+    );
+  }
+
+  // Convert CustomerImage to Map for Firestore
+  Map<String, dynamic> toMap() {
+    return {
+      'cusName': customerName,
+      'logoUrl': logoUrl,
+    };
+  }
+
+  // Create a copy of CustomerImage with updated fields
+  CustomerImage copyWith({
+    String? customerId,
+    String? customerName,
+    String? logoUrl,
+    String? assignedImageFileName,
+  }) {
+    return CustomerImage(
+      customerId: customerId ?? this.customerId,
+      customerName: customerName ?? this.customerName,
+      logoUrl: logoUrl ?? this.logoUrl,
+      assignedImageFileName: assignedImageFileName ?? this.assignedImageFileName,
+    );
+  }
+
+  @override
+  String toString() {
+    return 'CustomerImage(customerId: $customerId, customerName: $customerName, logoUrl: $logoUrl, assignedImageFileName: $assignedImageFileName)';
+  }
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is CustomerImage &&
+        other.customerId == customerId &&
+        other.customerName == customerName &&
+        other.logoUrl == logoUrl &&
+        other.assignedImageFileName == assignedImageFileName;
+  }
+
+  @override
+  int get hashCode {
+    return customerId.hashCode ^
+        customerName.hashCode ^
+        logoUrl.hashCode ^
+        assignedImageFileName.hashCode;
+  }
+}

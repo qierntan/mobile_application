@@ -15,6 +15,8 @@ class InvoiceFormScreen extends StatefulWidget {
 
 class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
   final _formKey = GlobalKey<FormState>();
+  final _customerFieldController = TextEditingController();
+  final _vehicleFieldController = TextEditingController();
   List<Map<String, dynamic>> customers = [];
   Map<String, List<String>> customerVehicles = {};
   List<PartItem> partItems = [PartItem()];
@@ -54,6 +56,8 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
       // Initialize form with existing invoice data
       selectedCustomer = widget.invoice!.customerName;
       selectedVehicle = widget.invoice!.vehicleId;
+      _customerFieldController.text = widget.invoice!.customerName;
+      _vehicleFieldController.text = widget.invoice!.vehicleId;
       dueDate = widget.invoice!.dueDate;
 
       // Initialize discount values
@@ -86,6 +90,13 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
       isPercentDiscount = false;
     }
     _loadCustomers(); // Load customers from database
+  }
+
+  @override
+  void dispose() {
+    _customerFieldController.dispose();
+    _vehicleFieldController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadCustomers() async {
@@ -127,8 +138,8 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
       if (!_validateAndSaveForm()) return;
 
       final invoiceData = {
-        'customerName': selectedCustomer,
-        'vehicleId': selectedVehicle,
+        'customerName': _customerFieldController.text.trim(),
+        'vehicleId': _vehicleFieldController.text.trim(),
         'date': widget.isEditing ? widget.invoice!.date : DateTime.now(),
         'dueDate': Timestamp.fromDate(dueDate!),
         'subtotal': subtotal,
@@ -157,7 +168,7 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
             .update(invoiceData);
       } else {
         // Generate a random 4-digit number
-        final random = new DateTime.now().millisecondsSinceEpoch % 10000;
+        final random = DateTime.now().millisecondsSinceEpoch % 10000;
         final formattedRandom = random.toString().padLeft(4, '0');
         final invoiceId = 'Inv$formattedRandom';
 
@@ -204,19 +215,23 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
       return false;
     }
 
-    // Customer & vehicle cross validation
-    if (selectedCustomer == null) {
-      _showError('Please select a customer.');
+    // Customer & vehicle validation
+    if (_customerFieldController.text.trim().isEmpty) {
+      _showError('Please enter or select a customer.');
       return false;
     }
-    if (selectedVehicle == null) {
-      _showError('Please select a vehicle Id.');
+    if (_vehicleFieldController.text.trim().isEmpty) {
+      _showError('Please enter or select a vehicle ID.');
       return false;
     }
-    final vehicles = customerVehicles[selectedCustomer] ?? const <String>[];
-    if (!vehicles.contains(selectedVehicle)) {
-      _showError('Selected vehicle does not belong to the chosen customer.');
-      return false;
+
+    // Optional: Validate if customer exists and vehicle belongs to customer
+    if (selectedCustomer != null && selectedVehicle != null) {
+      final vehicles = customerVehicles[selectedCustomer] ?? const <String>[];
+      if (!vehicles.contains(selectedVehicle)) {
+        _showError('Selected vehicle does not belong to the chosen customer.');
+        return false;
+      }
     }
 
     // Parts validation
@@ -305,91 +320,259 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
           padding: const EdgeInsets.all(16.0),
           child: Column(
             children: [
-              // Update the customer dropdown section
-              DropdownButtonFormField<String>(
-                decoration: InputDecoration(
-                  labelText: 'Customer',
-                  contentPadding: EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 14,
+              // Customer field with dropdown
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  TextFormField(
+                    controller: _customerFieldController,
+                    decoration: InputDecoration(
+                      labelText: 'Customer Name',
+                      hintText: 'Type or select customer',
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      suffixIcon: PopupMenuButton<String>(
+                        icon: Icon(Icons.arrow_drop_down),
+                        onSelected: (String value) {
+                          setState(() {
+                            _customerFieldController.text = value;
+                            selectedCustomer = value;
+                            _vehicleFieldController.clear();
+                            selectedVehicle = null;
+                          });
+                        },
+                        itemBuilder: (BuildContext context) {
+                          // Filter customers based on what's typed
+                          String searchText =
+                              _customerFieldController.text.toLowerCase();
+                          List<String> filteredCustomers =
+                              customers
+                                  .map((customer) => customer['name'] as String)
+                                  .where(
+                                    (name) =>
+                                        name.toLowerCase().contains(searchText),
+                                  )
+                                  .toList();
+
+                          if (filteredCustomers.isEmpty) {
+                            filteredCustomers =
+                                customers
+                                    .map(
+                                      (customer) => customer['name'] as String,
+                                    )
+                                    .toList();
+                          }
+
+                          return filteredCustomers.map<PopupMenuEntry<String>>((
+                            String value,
+                          ) {
+                            return PopupMenuItem<String>(
+                              value: value,
+                              child: Text(value),
+                            );
+                          }).toList();
+                        },
+                      ),
+                    ),
+                    onChanged: (value) {
+                      setState(() {
+                        selectedCustomer =
+                            customers.firstWhere(
+                              (c) => c['name'] == value,
+                              orElse: () => {},
+                            )['name'];
+                        if (selectedCustomer != value) {
+                          selectedCustomer = null;
+                        }
+                        // Clear vehicle when customer changes
+                        _vehicleFieldController.clear();
+                        selectedVehicle = null;
+                      });
+                    },
+                    validator:
+                        (value) =>
+                            value == null || value.trim().isEmpty
+                                ? 'Please enter or select customer name'
+                                : null,
                   ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-                value: selectedCustomer,
-                items: customers
-                    .map((c) => c['name'] as String)
-                    .toList(
-                      growable: false,
-                    ) // Using fixed-length list for better performance
-                    .map(
-                      (name) =>
-                          DropdownMenuItem(value: name, child: Text(name)),
-                    )
-                    .toList(
-                      growable: false,
-                    ), // Fixed-length list for menu items
-                onChanged: (value) {
-                  setState(() {
-                    selectedCustomer = value;
-                    selectedVehicle =
-                        null; // Reset vehicle selection when customer changes
-                  });
-                },
-                validator:
-                    (value) =>
-                        value == null || value.isEmpty
-                            ? 'Please select a customer'
-                            : null,
-                hint: Text('Select Customer'),
+                ],
               ),
               SizedBox(height: 12),
-              // Update the vehicle dropdown section
-              DropdownButtonFormField<String>(
-                decoration: InputDecoration(
-                  labelText: 'Vehicle Id',
-                  contentPadding: EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 14,
+              // Vehicle field with dropdown
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  TextFormField(
+                    controller: _vehicleFieldController,
+                    enabled: _customerFieldController.text.trim().isNotEmpty,
+                    decoration: InputDecoration(
+                      labelText: 'Vehicle ID',
+                      hintText:
+                          _customerFieldController.text.trim().isEmpty
+                              ? 'Please select a customer first'
+                              : 'Type or select vehicle',
+                      contentPadding: EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 14,
+                      ),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      suffixIcon:
+                          _customerFieldController.text.trim().isNotEmpty
+                              ? PopupMenuButton<String>(
+                                icon: Icon(Icons.arrow_drop_down),
+                                onSelected: (String value) {
+                                  setState(() {
+                                    _vehicleFieldController.text = value;
+                                    selectedVehicle = value;
+                                  });
+                                },
+                                itemBuilder: (BuildContext context) {
+                                  List<String> availableVehicles = [];
+
+                                  if (selectedCustomer != null) {
+                                    availableVehicles =
+                                        customerVehicles[selectedCustomer] ??
+                                        [];
+                                  } else {
+                                    String typedCustomer =
+                                        _customerFieldController.text.trim();
+                                    String? matchedCustomer = customerVehicles
+                                        .keys
+                                        .firstWhere(
+                                          (customerName) =>
+                                              customerName.toLowerCase() ==
+                                              typedCustomer.toLowerCase(),
+                                          orElse: () => '',
+                                        );
+
+                                    if (matchedCustomer.isNotEmpty) {
+                                      availableVehicles =
+                                          customerVehicles[matchedCustomer] ??
+                                          [];
+                                    }
+                                  }
+
+                                  return availableVehicles
+                                      .map<PopupMenuEntry<String>>((
+                                        String value,
+                                      ) {
+                                        return PopupMenuItem<String>(
+                                          value: value,
+                                          child: Text(value),
+                                        );
+                                      })
+                                      .toList();
+                                },
+                              )
+                              : Icon(
+                                Icons.arrow_drop_down,
+                                color: Colors.grey[400],
+                              ),
+                      fillColor:
+                          _customerFieldController.text.trim().isEmpty
+                              ? Colors.grey[100]
+                              : null,
+                      filled: _customerFieldController.text.trim().isEmpty,
+                    ),
+                    onChanged: (value) {
+                      if (_customerFieldController.text.trim().isNotEmpty) {
+                        setState(() {
+                          selectedVehicle = value;
+                        });
+                      }
+                    },
+                    validator: (value) {
+                      if (_customerFieldController.text.trim().isEmpty) {
+                        return 'Please select a customer first';
+                      }
+                      return value == null || value.trim().isEmpty
+                          ? 'Please enter or select vehicle ID'
+                          : null;
+                    },
                   ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-                value: selectedVehicle,
-                items: (selectedCustomer != null
-                        ? (customerVehicles[selectedCustomer] ?? []).toList(
-                          growable: false,
-                        )
-                        : <String>[])
-                    .map(
-                      (vehicle) => DropdownMenuItem(
-                        value: vehicle,
-                        child: Text(vehicle),
+                  if (_customerFieldController.text.trim().isEmpty)
+                    Padding(
+                      padding: EdgeInsets.only(top: 4),
+                      child: Text(
+                        'Please fill in customer name to enable vehicle selection',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.orange[600],
+                          fontStyle: FontStyle.italic,
+                        ),
                       ),
                     )
-                    .toList(
-                      growable: false,
-                    ), // Fixed-length list for menu items
-                onChanged:
-                    selectedCustomer != null
-                        ? (value) {
-                          setState(() {
-                            selectedVehicle = value;
-                          });
-                        }
-                        : null,
-                validator:
-                    (value) =>
-                        value == null || value.isEmpty
-                            ? 'Please select a vehicle Id'
-                            : null,
-                hint: Text(
-                  selectedCustomer == null
-                      ? 'Select a customer first'
-                      : 'Select Vehicle Id',
-                ),
+                  else if (selectedCustomer != null &&
+                      customerVehicles[selectedCustomer]?.isNotEmpty == true)
+                    Padding(
+                      padding: EdgeInsets.only(top: 4),
+                      child: Text(
+                        'Available vehicles for $selectedCustomer: ${customerVehicles[selectedCustomer]?.join(", ")}',
+                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                      ),
+                    )
+                  else if (_customerFieldController.text.trim().isNotEmpty)
+                    Padding(
+                      padding: EdgeInsets.only(top: 4),
+                      child: Builder(
+                        builder: (context) {
+                          String typedCustomer =
+                              _customerFieldController.text.trim();
+
+                          String? matchedCustomer = customerVehicles.keys
+                              .firstWhere(
+                                (customerName) =>
+                                    customerName.toLowerCase() ==
+                                    typedCustomer.toLowerCase(),
+                                orElse: () => '',
+                              );
+
+                          if (matchedCustomer.isEmpty) {
+                            matchedCustomer =
+                                customerVehicles.keys
+                                    .where(
+                                      (customerName) =>
+                                          customerName.toLowerCase().contains(
+                                            typedCustomer.toLowerCase(),
+                                          ) ||
+                                          typedCustomer.toLowerCase().contains(
+                                            customerName.toLowerCase(),
+                                          ),
+                                    )
+                                    .firstOrNull;
+                          }
+
+                          if (matchedCustomer != null &&
+                              customerVehicles[matchedCustomer]?.isNotEmpty ==
+                                  true) {
+                            return Text(
+                              'Available vehicles for $matchedCustomer: ${customerVehicles[matchedCustomer]?.join(", ")}',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey[600],
+                              ),
+                            );
+                          } else {
+                            return Text(
+                              'No vehicles found for "$typedCustomer". Please select a valid customer.',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.orange[600],
+                                fontStyle: FontStyle.italic,
+                              ),
+                            );
+                          }
+                        },
+                      ),
+                    ),
+                ],
               ),
               SizedBox(height: 12),
               GestureDetector(
@@ -443,7 +626,7 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
                         horizontal: 20,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.teal.shade600,
+                        color: Color(0xFFFFC700),
                         borderRadius: BorderRadius.only(
                           topLeft: Radius.circular(15),
                           topRight: Radius.circular(15),
@@ -454,7 +637,7 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
-                          color: Colors.white,
+                          color: Color(0xFF22211F),
                         ),
                       ),
                     ),
@@ -471,7 +654,9 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
                             elevation: 2,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
-                              side: BorderSide(color: Colors.teal.shade50),
+                              side: BorderSide(
+                                color: Color(0xFFFFC700).withOpacity(0.3),
+                              ),
                             ),
                             child: Container(
                               padding: EdgeInsets.all(12),
@@ -486,13 +671,15 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
                                       enabledBorder: OutlineInputBorder(
                                         borderRadius: BorderRadius.circular(8),
                                         borderSide: BorderSide(
-                                          color: Colors.teal.shade100,
+                                          color: Color(
+                                            0xFFFFC700,
+                                          ).withOpacity(0.5),
                                         ),
                                       ),
                                       focusedBorder: OutlineInputBorder(
                                         borderRadius: BorderRadius.circular(8),
                                         borderSide: BorderSide(
-                                          color: Colors.teal,
+                                          color: Color(0xFFFFC700),
                                           width: 2,
                                         ),
                                       ),
@@ -530,14 +717,16 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
                                               borderRadius:
                                                   BorderRadius.circular(8),
                                               borderSide: BorderSide(
-                                                color: Colors.teal.shade100,
+                                                color: Color(
+                                                  0xFFFFC700,
+                                                ).withOpacity(0.5),
                                               ),
                                             ),
                                             focusedBorder: OutlineInputBorder(
                                               borderRadius:
                                                   BorderRadius.circular(8),
                                               borderSide: BorderSide(
-                                                color: Colors.teal,
+                                                color: Color(0xFFFFC700),
                                                 width: 2,
                                               ),
                                             ),
@@ -579,14 +768,16 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
                                               borderRadius:
                                                   BorderRadius.circular(8),
                                               borderSide: BorderSide(
-                                                color: Colors.teal.shade100,
+                                                color: Color(
+                                                  0xFFFFC700,
+                                                ).withOpacity(0.5),
                                               ),
                                             ),
                                             focusedBorder: OutlineInputBorder(
                                               borderRadius:
                                                   BorderRadius.circular(8),
                                               borderSide: BorderSide(
-                                                color: Colors.teal,
+                                                color: Color(0xFFFFC700),
                                                 width: 2,
                                               ),
                                             ),
@@ -648,10 +839,12 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
                                       vertical: 8,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: Colors.teal.shade50,
+                                      color: Color(0xFFFFC700).withOpacity(0.2),
                                       borderRadius: BorderRadius.circular(8),
                                       border: Border.all(
-                                        color: Colors.teal.shade100,
+                                        color: Color(
+                                          0xFFFFC700,
+                                        ).withOpacity(0.5),
                                       ),
                                     ),
                                     child: Row(
@@ -662,14 +855,14 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
                                           'Total:',
                                           style: TextStyle(
                                             fontWeight: FontWeight.w600,
-                                            color: Colors.teal.shade700,
+                                            color: Color(0xFF22211F),
                                           ),
                                         ),
                                         Text(
                                           'RM ${partItems[index].total.toStringAsFixed(2)}',
                                           style: TextStyle(
                                             fontWeight: FontWeight.w600,
-                                            color: Colors.teal.shade700,
+                                            color: Color(0xFF22211F),
                                             fontSize: 15,
                                           ),
                                         ),
@@ -695,8 +888,8 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
                         icon: Icon(Icons.add_circle_outline),
                         label: Text('Add New Item'),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.teal.shade600,
-                          foregroundColor: Colors.white,
+                          backgroundColor: Color(0xFFFFC700),
+                          foregroundColor: Color(0xFF22211F),
                           padding: EdgeInsets.symmetric(
                             horizontal: 32,
                             vertical: 16,
@@ -759,6 +952,12 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
                   ),
                   SizedBox(width: 16),
                   ToggleButtons(
+                    onPressed: (index) {
+                      setState(() {
+                        isPercentDiscount = index == 1;
+                      });
+                    },
+                    isSelected: [!isPercentDiscount, isPercentDiscount],
                     children: [
                       Padding(
                         padding: EdgeInsets.symmetric(horizontal: 12),
@@ -769,12 +968,6 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
                         child: Text('%'),
                       ),
                     ],
-                    onPressed: (index) {
-                      setState(() {
-                        isPercentDiscount = index == 1;
-                      });
-                    },
-                    isSelected: [!isPercentDiscount, isPercentDiscount],
                   ),
                 ],
               ),
@@ -805,8 +998,15 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
                       onPressed: () => Navigator.of(context).pop(),
                       style: OutlinedButton.styleFrom(
                         minimumSize: Size.fromHeight(48),
-                        textStyle: TextStyle(fontSize: 16),
-                        side: BorderSide(color: Colors.grey),
+                        textStyle: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        side: BorderSide(color: Colors.grey[600]!),
+                        foregroundColor: Colors.grey[600],
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
                       ),
                       child: Text('Cancel'),
                     ),
@@ -820,11 +1020,17 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
                         foregroundColor: Color(0xFF22211F),
                         minimumSize: Size.fromHeight(48),
                         textStyle: TextStyle(
-                          fontWeight: FontWeight.bold,
+                          fontWeight: FontWeight.w600,
                           fontSize: 16,
                         ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        elevation: 2,
                       ),
-                      child: Text('Submit Invoice'),
+                      child: Text(
+                        widget.isEditing ? 'Update Invoice' : 'Create Invoice',
+                      ),
                     ),
                   ),
                 ],
@@ -865,7 +1071,7 @@ class _SummaryRow extends StatelessWidget {
                     : TextStyle(color: Color(0xFF22211F)),
           ),
           Text(
-            (value < 0 ? '- ' : '') + 'RM ${value.abs().toStringAsFixed(2)}',
+            '${value < 0 ? '- ' : ''}RM ${value.abs().toStringAsFixed(2)}',
             style:
                 isBold
                     ? TextStyle(

@@ -7,12 +7,18 @@ import 'package:mobile_application/screens/InvoiceManagement/report.dart';
 import 'package:mobile_application/screens/WorkScheduler/assigned_jobs_screen.dart';
 import 'package:mobile_application/screens/login_screen.dart';
 import 'package:mobile_application/screens/dashboard_screen.dart';
+import 'package:mobile_application/screens/notification_screen.dart';
+import 'package:mobile_application/services/notification_service.dart';
 import 'firebase_options.dart';
-import 'package:mobile_application/screens/Inventory/inventory_screen.dart';
+import 'package:mobile_application/screens/Inventory/inventory_list_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  // Initialize notification service
+  await NotificationService().initialize();
+
   // Start the payment success handler with retries
   bool serverStarted = false;
   int retryCount = 0;
@@ -41,10 +47,18 @@ void main() async {
 class MainApp extends StatelessWidget {
   const MainApp({super.key});
 
+  // Create a global navigator key for notifications
+  static final GlobalKey<NavigatorState> navigatorKey =
+      GlobalKey<NavigatorState>();
+
   @override
   Widget build(BuildContext context) {
+    // Set the navigator key for the notification service
+    NotificationService.navigatorKey = navigatorKey;
+
     return MaterialApp(
       title: 'Greenstem WMS',
+      navigatorKey: navigatorKey,
       theme: ThemeData(
         primarySwatch: Colors.teal,
         scaffoldBackgroundColor: Colors.grey[100],
@@ -55,6 +69,28 @@ class MainApp extends StatelessWidget {
         '/login': (context) => LoginScreen(),
         '/dashboard': (context) => HomeNavigator(),
         '/invoice': (context) => InvoiceListScreen(),
+        '/notifications': (context) => NotificationScreen(),
+        '/payment_notification':
+            (context) => NotificationScreen(
+              notificationType: 'payment',
+              arguments:
+                  ModalRoute.of(context)?.settings.arguments
+                      as Map<String, dynamic>?,
+            ),
+        '/service_notification':
+            (context) => NotificationScreen(
+              notificationType: 'service',
+              arguments:
+                  ModalRoute.of(context)?.settings.arguments
+                      as Map<String, dynamic>?,
+            ),
+        '/reply_notification':
+            (context) => NotificationScreen(
+              notificationType: 'reply',
+              arguments:
+                  ModalRoute.of(context)?.settings.arguments
+                      as Map<String, dynamic>?,
+            ),
       },
       debugShowCheckedModeBanner: false,
     );
@@ -62,6 +98,8 @@ class MainApp extends StatelessWidget {
 }
 
 class HomeNavigator extends StatefulWidget {
+  const HomeNavigator({super.key});
+
   @override
   _HomeNavigatorState createState() => _HomeNavigatorState();
 }
@@ -78,27 +116,27 @@ class _HomeNavigatorState extends State<HomeNavigator> {
 
   @override
   Widget build(BuildContext context) {
-    Widget _selectedScreen;
+    Widget selectedScreen;
 
     // Load screens based on navigation index
     switch (_currentIndex) {
       case 0:
-        _selectedScreen = DashboardScreen();
+        selectedScreen = DashboardScreen();
         break;
       case 1:
-        _selectedScreen = CustomerListScreen();
+        selectedScreen = CustomerListScreen();
         break;
       case 2:
-        _selectedScreen = AssignedJobsScreen();
+        selectedScreen = AssignedJobsScreen();
         break;
       case 3:
-        _selectedScreen = InventoryScreen();
+        selectedScreen = InventoryListScreen();
         break;
       case 4:
-        _selectedScreen = InvoiceListScreen();
+        selectedScreen = InvoiceListScreen();
         break;
       default:
-        _selectedScreen = Center(
+        selectedScreen = Center(
           child: Text(
             '🚧 This screen is under development.',
             style: TextStyle(fontSize: 18),
@@ -128,7 +166,7 @@ class _HomeNavigatorState extends State<HomeNavigator> {
                 ]
                 : null,
       ),
-      body: _selectedScreen,
+      body: selectedScreen,
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         type: BottomNavigationBarType.fixed,
