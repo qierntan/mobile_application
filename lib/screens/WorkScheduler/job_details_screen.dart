@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_application/model/job.dart';
+import 'package:mobile_application/model/vehicle.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class JobDetailsScreen extends StatefulWidget {
@@ -13,6 +14,8 @@ class JobDetailsScreen extends StatefulWidget {
 
 class _JobDetailsScreenState extends State<JobDetailsScreen> {
   Map<String, dynamic>? jobData;
+  Vehicle? vehicleData;
+  Map<String, dynamic>? customerData;
   bool isLoading = true;
 
   @override
@@ -23,14 +26,60 @@ class _JobDetailsScreenState extends State<JobDetailsScreen> {
 
   Future<void> _loadJobDetails() async {
     try {
-      final doc = await FirebaseFirestore.instance
+      // Load job data
+      final jobDoc = await FirebaseFirestore.instance
           .collection('Jobs')
           .doc(widget.job.id)
           .get();
       
-      if (doc.exists) {
+      if (jobDoc.exists) {
+        final jobDataMap = jobDoc.data()!;
+        final vehicleId = jobDataMap['vehicleId'] as String?;
+        
+        // Load vehicle data if vehicleId exists
+        Vehicle? vehicle;
+        Map<String, dynamic>? customer;
+        
+        if (vehicleId != null && vehicleId.isNotEmpty) {
+          try {
+            final vehicleDoc = await FirebaseFirestore.instance
+                .collection('Vehicle')
+                .doc(vehicleId)
+                .get();
+            
+            if (vehicleDoc.exists) {
+              vehicle = Vehicle.fromMap(vehicleDoc.data()!, vehicleDoc.id);
+              
+              // Load customer data using customerId from vehicle
+              final customerId = vehicle.customerId;
+              if (customerId.isNotEmpty) {
+                try {
+                  final customerDoc = await FirebaseFirestore.instance
+                      .collection('Customer')
+                      .doc(customerId)
+                      .get();
+                  
+                  if (customerDoc.exists) {
+                    customer = customerDoc.data();
+                  }
+                } catch (e) {
+                  print('Error loading customer details: $e');
+                }
+              }
+            }
+          } catch (e) {
+            print('Error loading vehicle details: $e');
+          }
+        }
+        
         setState(() {
-          jobData = doc.data();
+          jobData = jobDataMap;
+          vehicleData = vehicle;
+          customerData = customer;
+          isLoading = false;
+        });
+      } else {
+        setState(() {
           isLoading = false;
         });
       }
@@ -42,23 +91,6 @@ class _JobDetailsScreenState extends State<JobDetailsScreen> {
     }
   }
 
-  Future<void> _markAsComplete() async {
-    try {
-      await FirebaseFirestore.instance
-          .collection('Jobs')
-          .doc(widget.job.id)
-          .update({'status': 'completed'});
-      
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Job marked as completed!')),
-      );
-      Navigator.pop(context);
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to update job: $e')),
-      );
-    }
-  }
 
   Color _getCarColor(String carModel) {
     switch (carModel.toLowerCase()) {
@@ -103,8 +135,8 @@ class _JobDetailsScreenState extends State<JobDetailsScreen> {
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                _getCarColor(widget.job.carModel),
-                _getCarColor(widget.job.carModel).withOpacity(0.8),
+                _getCarColor(vehicleData?.fullCarModel ?? widget.job.carModel),
+                _getCarColor(vehicleData?.fullCarModel ?? widget.job.carModel).withOpacity(0.8),
               ],
             ),
           ),
@@ -241,7 +273,7 @@ class _JobDetailsScreenState extends State<JobDetailsScreen> {
                       width: double.infinity,
                       padding: EdgeInsets.symmetric(horizontal: 24, vertical: 8),
                       child: Text(
-                        widget.job.carModel,
+                        vehicleData?.fullCarModel ?? widget.job.carModel,
                         style: TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
@@ -258,9 +290,9 @@ class _JobDetailsScreenState extends State<JobDetailsScreen> {
                     _buildInfoSection(
                       'Vehicle Info',
                       [
-                        _buildInfoRow('Car Plate Number', jobData?['plateNumber'] ?? widget.job.plateNumber),
-                        _buildInfoRow('Year', jobData?['year'] ?? '2021'),
-                        _buildInfoRow('VIN', jobData?['vin'] ?? '1234XYZ987'),
+                        _buildInfoRow('Car Plate Number', vehicleData?.carPlateNumber ?? widget.job.plateNumber),
+                        _buildInfoRow('Year', vehicleData?.year.toString() ?? '2021'),
+                        _buildInfoRow('VIN', vehicleData?.vin ?? '1234XYZ987'),
                       ],
                     ),
 
@@ -268,8 +300,8 @@ class _JobDetailsScreenState extends State<JobDetailsScreen> {
                     _buildInfoSection(
                       'Customer Info',
                       [
-                        _buildInfoRow('Name', jobData?['customerName'] ?? 'Honda Chu'),
-                        _buildInfoRow('Contact', jobData?['customerContact'] ?? '+60123456789'),
+                        _buildInfoRow('Name', customerData?['cusName'] ?? 'Unknown Customer'),
+                        _buildInfoRow('Contact', customerData?['cusPhone'] ?? 'No Contact'),
                       ],
                     ),
 
@@ -283,57 +315,11 @@ class _JobDetailsScreenState extends State<JobDetailsScreen> {
                       ],
                     ),
 
-                    SizedBox(height: 100), // Space for button
+                    SizedBox(height: 24),
                   ],
                 ),
               ),
             ),
-          ],
-        ),
-      ),
-
-      // Complete button
-      bottomNavigationBar: Container(
-        padding: EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.grey.withOpacity(0.1),
-              spreadRadius: 1,
-              blurRadius: 8,
-              offset: Offset(0, -2),
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // Complete button
-            if (widget.job.status == JobStatus.assigned)
-              SizedBox(
-                width: double.infinity,
-                height: 52,
-                child: ElevatedButton(
-                  onPressed: _markAsComplete,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Color(0xFF4CAF50),
-                    foregroundColor: Colors.black,
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(26),
-                    ),
-                  ),
-                  child: Text(
-                    'Complete',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.black,
-                    ),
-                  ),
-                ),
-              ),
           ],
         ),
       ),
