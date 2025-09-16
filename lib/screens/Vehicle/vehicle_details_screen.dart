@@ -40,7 +40,7 @@ class VehicleDetailsScreen extends StatelessWidget {
           final String model = vehicle['model'] ?? 'Unknown';
           final String year = vehicle['year']?.toString() ?? 'Unknown';
           final String vin = vehicle['vin'] ?? 'Unknown';
-          final String plateNumber = vehicle['plateNumber'] ?? 'Unknown';
+          final String plateNumber = vehicle['carPlateNumber'] ?? 'Unknown';
           final String? imageUrl = vehicle['imageUrl'];
 
           return SingleChildScrollView(
