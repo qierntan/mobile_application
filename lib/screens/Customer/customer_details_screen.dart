@@ -37,6 +37,8 @@ class CustomerDetailsScreen extends StatelessWidget {
           final String email = customer['cusEmail'] ?? 'No Email';
           final String logoUrl = customer['logoUrl'] ?? '';
 
+          // Note: We'll query vehicles by customerId instead of using vehicleIds array
+
           return ListView(
             children: [
               SizedBox(height: 24),
@@ -114,14 +116,27 @@ class CustomerDetailsScreen extends StatelessWidget {
                               ),
                       ),
                       SizedBox(height: 10),
-                      Text(name, style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black87)),
+                      Text(
+                        name, 
+                        style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black87),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                        textAlign: TextAlign.center,
+                      ),
                       SizedBox(height: 10),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Icon(Icons.phone, color: Colors.black54, size: 18),
                           SizedBox(width: 8),
-                          Text(phone, style: TextStyle(fontSize: 14, color: Colors.black87)),
+                          Flexible(
+                            child: Text(
+                              phone, 
+                              style: TextStyle(fontSize: 14, color: Colors.black87),
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
+                            ),
+                          ),
                         ],
                       ),
                       SizedBox(height: 8),
@@ -130,7 +145,14 @@ class CustomerDetailsScreen extends StatelessWidget {
                         children: [
                           Icon(Icons.email, color: Colors.black54, size: 18),
                           SizedBox(width: 8),
-                          Text(email, style: TextStyle(fontSize: 14, color: Colors.black87)),
+                          Flexible(
+                            child: Text(
+                              email, 
+                              style: TextStyle(fontSize: 14, color: Colors.black87),
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
+                            ),
+                          ),
                         ],
                       ),
                     ],
@@ -143,30 +165,45 @@ class CustomerDetailsScreen extends StatelessWidget {
                 child: Text(
                   "$name's vehicles",
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
                 ),
               ),
-              // Vehicles List
+              // Vehicles List (query by customerId)
               StreamBuilder<QuerySnapshot>(
-                stream: FirebaseFirestore.instance.collection('Vehicle').where('customerId', isEqualTo: customerId).snapshots(),
-                builder: (context, vehicleSnapshot) {
-                  if (vehicleSnapshot.connectionState == ConnectionState.waiting) {
+                stream: FirebaseFirestore.instance
+                    .collection('Vehicle')
+                    .where('customerId', isEqualTo: customerId)
+                    .snapshots(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
                     return Center(child: CircularProgressIndicator());
                   }
-                  if (!vehicleSnapshot.hasData || vehicleSnapshot.data!.docs.isEmpty) {
+                  
+                  if (snapshot.hasError) {
+                    return Padding(
+                      padding: const EdgeInsets.all(24.0),
+                      child: Center(child: Text('Error loading vehicles: ${snapshot.error}')),
+                    );
+                  }
+
+                  final docs = snapshot.data?.docs ?? [];
+                  if (docs.isEmpty) {
                     return Padding(
                       padding: const EdgeInsets.all(24.0),
                       child: Center(child: Text('No vehicles found.')),
                     );
                   }
-                  final vehicles = vehicleSnapshot.data!.docs;
+
                   return Column(
-                    children: vehicles.map((doc) {
+                    children: docs.map((doc) {
                       final v = doc.data() as Map<String, dynamic>;
                       final String make = v['make'] ?? '';
                       final String model = v['model'] ?? '';
                       final String year = v['year']?.toString() ?? '';
                       final String vin = v['vin'] ?? '';
                       final String? imageUrl = v['imageUrl'];
+                      
                       return GestureDetector(
                         onTap: () {
                           Navigator.push(
@@ -212,7 +249,12 @@ class CustomerDetailsScreen extends StatelessWidget {
                                 child: Column(
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
-                                    Text('$make $model', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16, color: Colors.black87)),
+                                    Text(
+                                      '$make $model', 
+                                      style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16, color: Colors.black87),
+                                      overflow: TextOverflow.ellipsis,
+                                      maxLines: 1,
+                                    ),
                                   ],
                                 ),
                               ),

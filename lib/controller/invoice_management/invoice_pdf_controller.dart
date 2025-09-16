@@ -7,6 +7,7 @@ import 'package:mailer/mailer.dart';
 import 'package:mailer/smtp_server.dart';
 import 'package:mobile_application/model/invoice_management/invoice.dart';
 import 'package:mobile_application/configuration/config.dart';
+import 'package:mobile_application/services/notification_service.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
@@ -118,7 +119,7 @@ class InvoicePdfController {
                       ],
                     ),
                   )
-                  .toList(),
+                  ,
             ],
           ),
           pw.SizedBox(height: 12),
@@ -343,11 +344,28 @@ class InvoicePdfController {
         // Don't throw - email failure shouldn't break the payment flow
       }
 
+      // Send push notification to admin
+      print('Sending payment notification to admin...');
+      try {
+        await NotificationService().showPaymentNotification(
+          amount: invoice.total.toStringAsFixed(2),
+          customerId: invoice.customerName,
+          invoiceId: invoice.id,
+          customerName: invoice.customerName,
+        );
+        print('✅ Payment notification sent to admin');
+      } catch (notificationError) {
+        print(
+          '❌ Notification sending failed (non-critical): $notificationError',
+        );
+        // Don't throw - notification failure shouldn't break the payment flow
+      }
+
       print('✅ Payment success handling completed');
     } catch (e) {
       print('❌ Error handling payment success: $e');
       print('Stack trace: ${StackTrace.current}');
-      throw e;
+      rethrow;
     }
   }
 
@@ -414,7 +432,7 @@ class InvoicePdfController {
                   <th style="padding: 12px 8px; text-align: right; border-bottom: 2px solid #ddd;">Unit Price</th>
                   <th style="padding: 12px 8px; text-align: right; border-bottom: 2px solid #ddd;">Total</th>
                 </tr>
-                ${parts}
+                $parts
                 <tr>
                   <td colspan="3" style="padding: 8px; text-align: right; font-weight: bold;">Subtotal:</td>
                   <td style="padding: 8px; text-align: right;">RM ${invoice.subtotal.toStringAsFixed(2)}</td>

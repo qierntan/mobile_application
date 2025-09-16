@@ -156,7 +156,7 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
               
               
               <!-- Parts -->
-              ${partsHtml}
+              $partsHtml
             
               
               <!-- Subtotal -->
@@ -223,7 +223,7 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
       }
     } catch (e) {
       print('Error in sendReminderEmail: $e');
-      throw e;
+      rethrow;
     }
   }
 

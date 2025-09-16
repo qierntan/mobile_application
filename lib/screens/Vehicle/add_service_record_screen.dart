@@ -6,10 +6,10 @@ class AddServiceRecordScreen extends StatefulWidget {
   final String vehicleId;
 
   const AddServiceRecordScreen({
-    Key? key,
+    super.key,
     required this.customerId,
     required this.vehicleId,
-  }) : super(key: key);
+  });
 
   @override
   _AddServiceRecordScreenState createState() => _AddServiceRecordScreenState();

@@ -3,7 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 class WarehouseDetailsScreen extends StatelessWidget {
   final String warehouseId;
-  const WarehouseDetailsScreen({Key? key, required this.warehouseId}) : super(key: key);
+  const WarehouseDetailsScreen({super.key, required this.warehouseId});
 
   @override
   Widget build(BuildContext context) {
@@ -77,30 +77,55 @@ class WarehouseDetailsScreen extends StatelessWidget {
           final contactPerson = (data['contactPerson'] ?? '').toString();
           final deliver = (data['Deliver'] ?? '').toString();
 
-          return ListView(
-            padding: const EdgeInsets.all(20),
-            children: [
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 8)],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(name, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 8),
-                    _infoRow(Icons.place_outlined, region.isEmpty ? 'Region: -' : region),
-                    _infoRow(Icons.person_outline, contactPerson.isEmpty ? 'Contact: -' : contactPerson),
-                    _infoRow(Icons.phone_outlined, phoneNumber.isEmpty ? 'Phone: -' : phoneNumber),
-                    _infoRow(Icons.email_outlined, email.isEmpty ? 'Email: -' : email),
-                    _infoRow(Icons.local_shipping_outlined, deliver.isEmpty ? 'Delivery: -' : deliver),
-                  ],
-                ),
+          return SingleChildScrollView(
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Removed header image for warehouse
+
+                  // Warehouse Info Section (styled like vehicle info)
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.05),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Warehouse Info',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.black87,
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        _labeledRow('Name :', name),
+                        _labeledRow('Region :', region.isEmpty ? '-' : region),
+                        _labeledRow('Contact Person :', contactPerson.isEmpty ? '-' : contactPerson),
+                        _labeledRow('Phone :', phoneNumber.isEmpty ? '-' : phoneNumber),
+                        _labeledRow('Email :', email.isEmpty ? '-' : email),
+                        _labeledRow('Delivery :', deliver.isEmpty ? '-' : deliver),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 100),
+                ],
               ),
-            ],
+            ),
           );
         },
       ),
@@ -119,11 +144,40 @@ class WarehouseDetailsScreen extends StatelessWidget {
       ),
     );
   }
+
+  Widget _labeledRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 140,
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontSize: 14,
+                color: Colors.black87,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(fontSize: 14, color: Colors.black87),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class WarehouseEditScreen extends StatefulWidget {
   final String warehouseId;
-  const WarehouseEditScreen({Key? key, required this.warehouseId}) : super(key: key);
+  const WarehouseEditScreen({super.key, required this.warehouseId});
 
   @override
   State<WarehouseEditScreen> createState() => _WarehouseEditScreenState();
@@ -160,7 +214,7 @@ class _WarehouseEditScreenState extends State<WarehouseEditScreen> {
 
   Future<void> _load() async {
     final snap = await FirebaseFirestore.instance.collection('Warehouse').doc(widget.warehouseId).get();
-    final d = snap.data() as Map<String, dynamic>?;
+    final d = snap.data();
     if (d == null) return;
     _name.text = (d['warehouseName'] ?? '').toString();
     _id.text = widget.warehouseId;

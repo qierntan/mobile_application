@@ -6,7 +6,7 @@ import 'package:mobile_application/screens/Inventory/Procurement/procurement_req
 
 class PartDetailsScreen extends StatelessWidget {
   final Part part;
-  const PartDetailsScreen({Key? key, required this.part}) : super(key: key);
+  const PartDetailsScreen({super.key, required this.part});
 
   @override
   Widget build(BuildContext context) {

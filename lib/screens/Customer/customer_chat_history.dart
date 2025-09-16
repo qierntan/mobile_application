@@ -11,7 +11,7 @@ class CustomerChatHistory extends StatefulWidget {
   final String customerId;
   final String customerName;
 
-  const CustomerChatHistory({Key? key, required this.customerId, required this.customerName}) : super(key: key);
+  const CustomerChatHistory({super.key, required this.customerId, required this.customerName});
 
   @override
   State<CustomerChatHistory> createState() => _CustomerChatHistoryState();
@@ -72,22 +72,14 @@ class _CustomerChatHistoryState extends State<CustomerChatHistory> {
             const SizedBox(width: 10),
             Expanded(
               child: Text(
-                '${widget.customerName}',
+                widget.customerName,
                 overflow: TextOverflow.ellipsis,
               ),
             ),
           ],
         ),
         backgroundColor: Color(0xFFF5F3EF),
-        actions: [
-          IconButton(
-            tooltip: 'Clean unreachable audio',
-            icon: const Icon(Icons.cleaning_services_outlined),
-            onPressed: () async {
-              await _cleanupUnreachableAudioMessages();
-            },
-          ),
-        ],
+        
       ),
       body: Column(
         children: [
@@ -367,35 +359,6 @@ class _CustomerChatHistoryState extends State<CustomerChatHistory> {
     }
   }
 
-  Future<void> _cleanupUnreachableAudioMessages() async {
-    final q = await FirebaseFirestore.instance
-        .collection('ChatHistory')
-        .where('customerId', isEqualTo: widget.customerId)
-        .where('messageType', isEqualTo: 'audio')
-        .get();
-
-    int deleted = 0;
-    for (final doc in q.docs) {
-      final url = (doc.data()['audioUrl'] ?? '').toString();
-      if (url.isEmpty) {
-        await doc.reference.delete();
-        deleted++;
-        continue;
-      }
-      try {
-        // Try to fetch metadata; if it throws, the file likely doesn't exist
-        await FirebaseStorage.instance.refFromURL(url).getMetadata();
-      } catch (_) {
-        await doc.reference.delete();
-        deleted++;
-      }
-    }
-
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Cleaned $deleted unreachable audio message(s).')),
-    );
-  }
 
   @override
   void dispose() {

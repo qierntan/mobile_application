@@ -9,7 +9,7 @@ import 'package:mobile_application/screens/Inventory/Procurement/procurement_req
 import 'package:mobile_application/screens/Inventory/Procurement/procurement_history_screen.dart';
 
 class InventoryListScreen extends StatefulWidget {
-  const InventoryListScreen({Key? key}) : super(key: key);
+  const InventoryListScreen({super.key});
 
   @override
   State<InventoryListScreen> createState() => _InventoryListScreenState();

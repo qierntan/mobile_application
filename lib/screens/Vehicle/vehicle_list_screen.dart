@@ -7,7 +7,7 @@ class VehicleListScreen extends StatelessWidget {
   final String customerId;
   final String customerName;
 
-  const VehicleListScreen({Key? key, required this.customerId, required this.customerName}) : super(key: key);
+  const VehicleListScreen({super.key, required this.customerId, required this.customerName});
 
   @override
   Widget build(BuildContext context) {
@@ -61,8 +61,8 @@ class VehicleListScreen extends StatelessWidget {
                     margin: EdgeInsets.symmetric(vertical: 6, horizontal: 12),
                     child: ListTile(
                       leading: CircleAvatar(
-                        child: Icon(Icons.directions_car, color: Colors.white),
                         backgroundColor: Colors.teal,
+                        child: Icon(Icons.directions_car, color: Colors.white),
                       ),
                       title: Text('$make $model'),
                       subtitle: Text(
@@ -98,8 +98,8 @@ class VehicleListScreen extends StatelessWidget {
             ),
           );
         },
-        child: Icon(Icons.add, color: Colors.white),
         backgroundColor: Colors.teal,
+        child: Icon(Icons.add, color: Colors.white),
       ),
     );
   }

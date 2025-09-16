@@ -20,23 +20,36 @@ class Job {
   });
 
   String get formattedTime {
-    final minute = scheduledTime.minute.toString().padLeft(2, '0');
-    final period = scheduledTime.hour >= 12 ? 'PM' : 'AM';
-    final displayHour = scheduledTime.hour > 12 ? scheduledTime.hour - 12 : scheduledTime.hour;
-    final displayHourStr = displayHour == 0 ? '12' : displayHour.toString();
-    return '$displayHourStr:$minute $period';
+    // Convert to local time to handle timezone properly
+    final localTime = scheduledTime.toLocal();
+    final minute = localTime.minute.toString().padLeft(2, '0');
+    final period = localTime.hour >= 12 ? 'PM' : 'AM';
+    
+    // Fix 12-hour conversion logic
+    int displayHour = localTime.hour;
+    if (displayHour == 0) {
+      displayHour = 12; // 12 AM
+    } else if (displayHour > 12) {
+      displayHour = displayHour - 12; // 1-11 PM
+    }
+    // displayHour 12 stays as 12 (12 PM)
+    
+    return '$displayHour:$minute $period';
   }
 
   String get formattedDate {
+    // Convert to local time to handle timezone properly
+    final localTime = scheduledTime.toLocal();
     final months = [
       'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
       'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
     ];
-    return '${months[scheduledTime.month - 1]} ${scheduledTime.day}';
+    return '${months[localTime.month - 1]} ${localTime.day}';
   }
 }
 
 enum JobStatus {
+  unassigned,
   assigned,
   inProgress,
   completed,
