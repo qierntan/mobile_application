@@ -130,11 +130,10 @@ class PartController {
   }
 
   // Get parts with search and sort applied
-  List<Part> applyFiltersAndSort(
-    List<Part> parts, String searchQuery, String sortBy, {bool ascending = true}) {
-  final searched = searchParts(parts, searchQuery);
-  return sortParts(searched, sortBy, ascending: ascending);
-}
+  List<Part> applyFiltersAndSort(List<Part> parts, String searchQuery, String sortBy, {bool ascending = true}) {
+    final searched = searchParts(parts, searchQuery);
+    return sortParts(searched, sortBy, ascending: ascending);
+  }
 
   // Check if part exists by name
   Future<bool> partExistsByName(String partName) async {

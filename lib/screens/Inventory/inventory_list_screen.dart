@@ -5,6 +5,8 @@ import 'package:mobile_application/controller/inventory_management/part_controll
 import 'package:mobile_application/screens/Inventory/Part/part_add_screen.dart';
 import 'Warehouse/warehouse_list_screen.dart';
 import 'Part/part_details_screen.dart';
+import 'package:mobile_application/screens/Inventory/Procurement/procurement_request_screen.dart';
+import 'package:mobile_application/screens/Inventory/Procurement/procurement_history_screen.dart';
 
 class InventoryListScreen extends StatefulWidget {
   const InventoryListScreen({Key? key}) : super(key: key);
@@ -74,6 +76,14 @@ class _InventoryListScreenState extends State<InventoryListScreen> {
                     PopupMenuItem(value: 2, child: Text('> View Warehouse List')),
                   ],
                   onSelected: (value) async {
+                    if (value == 1) {
+                      await Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const ProcurementHistoryScreen()),
+                      );
+                      if (mounted) setState(() {});
+                    }
+
                     if (value == 2) {
                       await Navigator.push(
                         context,
@@ -232,8 +242,16 @@ class _InventoryListScreenState extends State<InventoryListScreen> {
                                 const Icon(Icons.chevron_right, color: Colors.black26),
                                 const SizedBox(height: 16),
                                 TextButton(
-                                  onPressed: () {
-                                    // TODO: implement request action
+                                  onPressed: () async {
+                                    final request = await Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => ProcurementRequestScreen(partId: part.id!),
+                                      ),
+                                    );
+                                    if (request == true && context.mounted) {
+                                      Navigator.pop(context, true);
+                                    }
                                   },
                                   style: TextButton.styleFrom(
                                     backgroundColor: const Color(0xFFFFD54F),

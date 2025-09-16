@@ -139,7 +139,6 @@ class _PartAddScreenState extends State<PartAddScreen> {
                 ],
               ),
             ),
-            const SizedBox(height: 16),
 
             _field('Current Quantity', _qty),
             _field('Minimum Threshold', _threshold),
@@ -180,6 +179,7 @@ class _PartAddScreenState extends State<PartAddScreen> {
                 },
               ),
             ),
+            
             const SizedBox(height: 12),
             Center(
               child: ElevatedButton(
