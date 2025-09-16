@@ -7,12 +7,18 @@ import 'package:mobile_application/screens/InvoiceManagement/report.dart';
 import 'package:mobile_application/screens/WorkScheduler/assigned_jobs_screen.dart';
 import 'package:mobile_application/screens/login_screen.dart';
 import 'package:mobile_application/screens/dashboard_screen.dart';
+import 'package:mobile_application/screens/notification_screen.dart';
+import 'package:mobile_application/services/notification_service.dart';
 import 'firebase_options.dart';
 import 'package:mobile_application/screens/Inventory/inventory_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  // Initialize notification service
+  await NotificationService().initialize();
+
   // Start the payment success handler with retries
   bool serverStarted = false;
   int retryCount = 0;
@@ -41,10 +47,18 @@ void main() async {
 class MainApp extends StatelessWidget {
   const MainApp({super.key});
 
+  // Create a global navigator key for notifications
+  static final GlobalKey<NavigatorState> navigatorKey =
+      GlobalKey<NavigatorState>();
+
   @override
   Widget build(BuildContext context) {
+    // Set the navigator key for the notification service
+    NotificationService.navigatorKey = navigatorKey;
+
     return MaterialApp(
       title: 'Greenstem WMS',
+      navigatorKey: navigatorKey,
       theme: ThemeData(
         primarySwatch: Colors.teal,
         scaffoldBackgroundColor: Colors.grey[100],
@@ -55,6 +69,28 @@ class MainApp extends StatelessWidget {
         '/login': (context) => LoginScreen(),
         '/dashboard': (context) => HomeNavigator(),
         '/invoice': (context) => InvoiceListScreen(),
+        '/notifications': (context) => NotificationScreen(),
+        '/payment_notification':
+            (context) => NotificationScreen(
+              notificationType: 'payment',
+              arguments:
+                  ModalRoute.of(context)?.settings.arguments
+                      as Map<String, dynamic>?,
+            ),
+        '/service_notification':
+            (context) => NotificationScreen(
+              notificationType: 'service',
+              arguments:
+                  ModalRoute.of(context)?.settings.arguments
+                      as Map<String, dynamic>?,
+            ),
+        '/reply_notification':
+            (context) => NotificationScreen(
+              notificationType: 'reply',
+              arguments:
+                  ModalRoute.of(context)?.settings.arguments
+                      as Map<String, dynamic>?,
+            ),
       },
       debugShowCheckedModeBanner: false,
     );

@@ -7,6 +7,7 @@ import 'package:mailer/mailer.dart';
 import 'package:mailer/smtp_server.dart';
 import 'package:mobile_application/model/invoice_management/invoice.dart';
 import 'package:mobile_application/configuration/config.dart';
+import 'package:mobile_application/services/notification_service.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
@@ -341,6 +342,23 @@ class InvoicePdfController {
       } catch (emailError) {
         print('❌ Email sending failed (non-critical): $emailError');
         // Don't throw - email failure shouldn't break the payment flow
+      }
+
+      // Send push notification to admin
+      print('Sending payment notification to admin...');
+      try {
+        await NotificationService().showPaymentNotification(
+          amount: invoice.total.toStringAsFixed(2),
+          customerId: invoice.customerName,
+          invoiceId: invoice.id,
+          customerName: invoice.customerName,
+        );
+        print('✅ Payment notification sent to admin');
+      } catch (notificationError) {
+        print(
+          '❌ Notification sending failed (non-critical): $notificationError',
+        );
+        // Don't throw - notification failure shouldn't break the payment flow
       }
 
       print('✅ Payment success handling completed');
