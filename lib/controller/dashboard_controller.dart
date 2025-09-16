@@ -95,20 +95,31 @@ class DashboardController {
     }
   }
 
-  /// Get total mechanics count (assuming this comes from a Users collection with role)
+  /// Get total mechanics count by counting unique mechanic names from Jobs collection
   Future<int> getTotalMechanics() async {
     try {
-      // Assuming mechanics are stored in Users collection with role field
-      final QuerySnapshot snapshot =
-          await _firestore
-              .collection('Users')
-              .where('role', isEqualTo: 'mechanic')
-              .get();
-      return snapshot.docs.length;
+      // Get all jobs to extract unique mechanic names
+      final QuerySnapshot snapshot = await _firestore.collection('Jobs').get();
+      
+      // Use a Set to store unique mechanic names
+      Set<String> uniqueMechanics = <String>{};
+      
+      for (var doc in snapshot.docs) {
+        final data = doc.data() as Map<String, dynamic>;
+        final mechanicName = data['mechanicName']?.toString().trim();
+        
+        // Only add non-empty mechanic names
+        if (mechanicName != null && mechanicName.isNotEmpty) {
+          uniqueMechanics.add(mechanicName);
+        }
+      }
+      
+      print('Found ${uniqueMechanics.length} unique mechanics: ${uniqueMechanics.toList()}');
+      return uniqueMechanics.length;
     } catch (e) {
-      print('Error fetching mechanics count: $e');
-      // Return default value if Users collection doesn't exist or no role field
-      return 7; // Default value as shown in current dashboard
+      print('Error fetching mechanics count from Jobs: $e');
+      // Return default value based on hardcoded mechanics in work scheduler
+      return 3; // Jackson Lee, Dylan Leong, Dixon Yap
     }
   }
 

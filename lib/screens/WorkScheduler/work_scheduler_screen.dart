@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:mobile_application/model/job.dart';
+import 'package:mobile_application/model/vehicle.dart';
 import 'job_details_screen.dart';
 import 'work_schedule_screen.dart';
 
@@ -93,11 +94,14 @@ class _WorkSchedulerScreenState extends State<WorkSchedulerScreen> {
     }
   }
 
-  List<Job> _filterJobs(List<DocumentSnapshot> docs) {
-    List<Job> jobs = docs.map((doc) {
+  Future<List<Job>> _filterJobsAsync(List<DocumentSnapshot> docs) async {
+    List<Job> jobs = [];
+    
+    for (var doc in docs) {
       final data = doc.data() as Map<String, dynamic>;
       final statusFromFirestore = data['status'] ?? 'assigned';
       final parsedStatus = _parseJobStatus(statusFromFirestore);
+      
       // Enhanced debug logging for time field
       print('=== DEBUG TIME FIELD FOR JOB ${doc.id} ===');
       print('Raw time field from Firestore: ${data['time']}');
@@ -106,30 +110,65 @@ class _WorkSchedulerScreenState extends State<WorkSchedulerScreen> {
       final firestoreTime = (data['time'] as Timestamp?)?.toDate();
       print('Converted firestoreTime: $firestoreTime');
       
-      // Don't fallback to DateTime.now() - this was causing your issue!
       if (firestoreTime == null) {
         print('⚠️  WARNING: Job ${doc.id} has null time field!');
       }
       
-      final actualTime = firestoreTime ?? DateTime(2025, 9, 18, 10, 0); // Use your expected time as fallback for debugging
+      final actualTime = firestoreTime ?? DateTime(2025, 9, 18, 10, 0);
       final localTime = actualTime.toLocal();
       
-      // Debug: Print status and time information
       print('Job ${doc.id}: Firestore status = "$statusFromFirestore", Parsed status = $parsedStatus');
       print('Job ${doc.id}: Firestore time = $actualTime, Local time = $localTime');
+      
+      // Fetch vehicle data using vehicleId
+      final vehicleId = data['vehicleId'] ?? '';
+      Vehicle? vehicle;
+      String carModel = '';
+      String plateNumber = '';
+      String imageUrl = '';
+      
+      if (vehicleId.isNotEmpty) {
+        try {
+          final vehicleDoc = await FirebaseFirestore.instance
+              .collection('Vehicle')
+              .doc(vehicleId)
+              .get();
+          
+          if (vehicleDoc.exists) {
+            vehicle = Vehicle.fromMap(vehicleDoc.data()!, vehicleDoc.id);
+            carModel = vehicle.fullCarModel;
+            plateNumber = vehicle.carPlateNumber;
+            imageUrl = vehicle.imageUrl;
+            print('Vehicle data loaded for job ${doc.id}: $carModel ($plateNumber)');
+          } else {
+            print('⚠️  WARNING: Vehicle $vehicleId not found for job ${doc.id}');
+            carModel = 'Unknown Vehicle';
+            plateNumber = 'Unknown';
+          }
+        } catch (e) {
+          print('❌ ERROR: Failed to load vehicle $vehicleId for job ${doc.id}: $e');
+          carModel = 'Error Loading Vehicle';
+          plateNumber = 'Error';
+        }
+      } else {
+        print('⚠️  WARNING: Job ${doc.id} has no vehicleId');
+        carModel = 'No Vehicle';
+        plateNumber = 'No Plate';
+      }
+      
       print('=== END DEBUG ===');
       
-      return Job(
+      jobs.add(Job(
         id: doc.id,
-        carModel: data['carModel'] ?? '',
-        plateNumber: data['plateNumber'] ?? '',
+        carModel: carModel,
+        plateNumber: plateNumber,
         mechanic: data['mechanicName'] ?? '',
         serviceType: data['serviceType'] ?? '',
         scheduledTime: actualTime,
-        imageUrl: data['imageUrl'] ?? '',
+        imageUrl: imageUrl,
         status: parsedStatus,
-      );
-    }).toList();
+      ));
+    }
 
     // Filter by status
     print('Selected filter: $selectedFilter');
@@ -230,27 +269,18 @@ class _WorkSchedulerScreenState extends State<WorkSchedulerScreen> {
                   SizedBox(height: 16),
                   
                   // Search bar
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(25),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.grey.withOpacity(0.1),
-                          spreadRadius: 1,
-                          blurRadius: 3,
-                          offset: Offset(0, 1),
-                        ),
-                      ],
-                    ),
+                  Material(
+                    elevation: 2,
+                    borderRadius: BorderRadius.circular(30),
                     child: TextField(
                       controller: _searchController,
                       decoration: InputDecoration(
                         hintText: 'Search',
-                        hintStyle: TextStyle(color: Colors.grey[400]),
-                        prefixIcon: Icon(Icons.search, color: Colors.grey[400]),
+                        prefixIcon: Icon(Icons.search),
                         border: InputBorder.none,
-                        contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+                        contentPadding: EdgeInsets.symmetric(vertical: 14),
+                        filled: true,
+                        fillColor: Colors.white,
                       ),
                     ),
                   ),
@@ -312,77 +342,98 @@ class _WorkSchedulerScreenState extends State<WorkSchedulerScreen> {
                     );
                   }
 
-                  final filteredJobs = _filterJobs(snapshot.data!.docs);
-                  
-                  // Update mechanic workloads with current jobs
-                  if (showAssignmentMode) {
-                    _updateMechanicWorkloads(filteredJobs);
-                  }
+                  return FutureBuilder<List<Job>>(
+                    future: _filterJobsAsync(snapshot.data!.docs),
+                    builder: (context, jobsSnapshot) {
+                      if (jobsSnapshot.connectionState == ConnectionState.waiting) {
+                        return Center(child: CircularProgressIndicator());
+                      }
 
-                  return ScrollConfiguration(
-                    behavior: CustomScrollBehavior(),
-                    child: Scrollbar(
-                      child: CustomScrollView(
-                        physics: AlwaysScrollableScrollPhysics(),
-                        slivers: [
-                      // Mechanic workloads (show when in assignment mode)
-                      if (showAssignmentMode)
-                        SliverToBoxAdapter(
-                          child: Container(
-                            margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                            padding: EdgeInsets.all(12),
-                            decoration: BoxDecoration(
-                              color: Colors.teal.withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  'Mechanic Workloads',
-                                  style: TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.teal[700],
-                                  ),
-                                ),
-                                SizedBox(height: 8),
-                                Wrap(
-                                  spacing: 8,
-                                  children: mechanics.map((m) => Chip(
-                                    label: Text('${m.name}: ${m.workload} jobs'),
-                                    backgroundColor: Colors.teal[50],
-                                    labelStyle: TextStyle(color: Colors.teal[700]),
-                                  )).toList(),
-                                ),
-                              ],
+                      if (jobsSnapshot.hasError) {
+                        return Center(
+                          child: Text(
+                            'Error loading jobs: ${jobsSnapshot.error}',
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: Colors.red[600],
                             ),
                           ),
-                        ),
+                        );
+                      }
+
+                      final filteredJobs = jobsSnapshot.data ?? [];
                       
-                      // Jobs list
-                      SliverList(
-                        delegate: SliverChildBuilderDelegate(
-                          (context, index) {
-                            final job = filteredJobs[index];
-                            return Padding(
-                              padding: EdgeInsets.symmetric(horizontal: 16) +
-                                  EdgeInsets.only(
-                                    bottom: index == filteredJobs.length - 1 ? 24 : 12,
-                                  ),
-                              child: JobCard(
-                                job: job,
-                                showAssignmentMode: showAssignmentMode,
-                                mechanics: mechanics,
-                                onAssignJob: _assignJob,
+                      // Update mechanic workloads with current jobs
+                      if (showAssignmentMode) {
+                        _updateMechanicWorkloads(filteredJobs);
+                      }
+
+                      return ScrollConfiguration(
+                        behavior: CustomScrollBehavior(),
+                        child: Scrollbar(
+                          child: CustomScrollView(
+                            physics: AlwaysScrollableScrollPhysics(),
+                            slivers: [
+                          // Mechanic workloads (show when in assignment mode)
+                          if (showAssignmentMode)
+                            SliverToBoxAdapter(
+                              child: Container(
+                                margin: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                padding: EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: Colors.teal.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Mechanic Workloads',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.teal[700],
+                                      ),
+                                    ),
+                                    SizedBox(height: 8),
+                                    Wrap(
+                                      spacing: 8,
+                                      children: mechanics.map((m) => Chip(
+                                        label: Text('${m.name}: ${m.workload} jobs'),
+                                        backgroundColor: Colors.teal[50],
+                                        labelStyle: TextStyle(color: Colors.teal[700]),
+                                      )).toList(),
+                                    ),
+                                  ],
+                                ),
                               ),
-                            );
-                          },
-                          childCount: filteredJobs.length,
+                            ),
+                          
+                          // Jobs list
+                          SliverList(
+                            delegate: SliverChildBuilderDelegate(
+                              (context, index) {
+                                final job = filteredJobs[index];
+                                return Padding(
+                                  padding: EdgeInsets.symmetric(horizontal: 16) +
+                                      EdgeInsets.only(
+                                        bottom: index == filteredJobs.length - 1 ? 24 : 12,
+                                      ),
+                                  child: JobCard(
+                                    job: job,
+                                    showAssignmentMode: showAssignmentMode,
+                                    mechanics: mechanics,
+                                    onAssignJob: _assignJob,
+                                  ),
+                                );
+                              },
+                              childCount: filteredJobs.length,
+                            ),
+                          ),
+                            ],
+                          ),
                         ),
-                      ),
-                        ],
-                      ),
-                    ),
+                      );
+                    },
                   );
                 },
                 ),
@@ -574,26 +625,13 @@ class JobCard extends StatelessWidget {
                 // Regular action buttons (edit/delete) - prevent tap propagation
                 GestureDetector(
                   onTap: () {}, // Consume tap to prevent navigation
-                  child: Column(
-                    children: [
-                      IconButton(
-                        icon: Icon(Icons.edit, color: Colors.grey[600]),
-                        onPressed: () {
-                          // Edit job
-                        },
-                        padding: EdgeInsets.zero,
-                        constraints: BoxConstraints(),
-                      ),
-                      SizedBox(height: 8),
-                      IconButton(
-                        icon: Icon(Icons.delete, color: Colors.red[400]),
-                        onPressed: () {
-                          // Delete job
-                        },
-                        padding: EdgeInsets.zero,
-                        constraints: BoxConstraints(),
-                      ),
-                    ],
+                  child: IconButton(
+                    icon: Icon(Icons.edit, color: Colors.grey[600]),
+                    onPressed: () {
+                      // Edit job
+                    },
+                    padding: EdgeInsets.zero,
+                    constraints: BoxConstraints(),
                   ),
                 ),
             ],
