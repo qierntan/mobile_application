@@ -4,7 +4,7 @@ import 'package:mobile_application/controller/invoice_management/invoice_pdf_con
 import 'package:mobile_application/screens/Customer/customer_list_screen.dart';
 import 'package:mobile_application/screens/InvoiceManagement/invoice_list_screen.dart';
 import 'package:mobile_application/screens/InvoiceManagement/report.dart';
-import 'package:mobile_application/screens/WorkScheduler/assigned_jobs_screen.dart';
+import 'package:mobile_application/screens/WorkScheduler/work_scheduler_screen.dart';
 import 'package:mobile_application/screens/login_screen.dart';
 import 'package:mobile_application/screens/dashboard_screen.dart';
 import 'package:mobile_application/screens/notification_screen.dart';
@@ -125,7 +125,7 @@ class _HomeNavigatorState extends State<HomeNavigator> {
         _selectedScreen = CustomerListScreen();
         break;
       case 2:
-        _selectedScreen = AssignedJobsScreen();
+        _selectedScreen = WorkSchedulerScreen();
         break;
       case 3:
         _selectedScreen = InventoryListScreen();
