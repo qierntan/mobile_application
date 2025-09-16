@@ -116,14 +116,27 @@ class CustomerDetailsScreen extends StatelessWidget {
                               ),
                       ),
                       SizedBox(height: 10),
-                      Text(name, style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black87)),
+                      Text(
+                        name, 
+                        style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: Colors.black87),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                        textAlign: TextAlign.center,
+                      ),
                       SizedBox(height: 10),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Icon(Icons.phone, color: Colors.black54, size: 18),
                           SizedBox(width: 8),
-                          Text(phone, style: TextStyle(fontSize: 14, color: Colors.black87)),
+                          Flexible(
+                            child: Text(
+                              phone, 
+                              style: TextStyle(fontSize: 14, color: Colors.black87),
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
+                            ),
+                          ),
                         ],
                       ),
                       SizedBox(height: 8),
@@ -132,7 +145,14 @@ class CustomerDetailsScreen extends StatelessWidget {
                         children: [
                           Icon(Icons.email, color: Colors.black54, size: 18),
                           SizedBox(width: 8),
-                          Text(email, style: TextStyle(fontSize: 14, color: Colors.black87)),
+                          Flexible(
+                            child: Text(
+                              email, 
+                              style: TextStyle(fontSize: 14, color: Colors.black87),
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
+                            ),
+                          ),
                         ],
                       ),
                     ],
@@ -145,6 +165,8 @@ class CustomerDetailsScreen extends StatelessWidget {
                 child: Text(
                   "$name's vehicles",
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
                 ),
               ),
               // Vehicles List (by vehicleIds array on Customer)
@@ -229,7 +251,12 @@ class CustomerDetailsScreen extends StatelessWidget {
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      Text('$make $model', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16, color: Colors.black87)),
+                                      Text(
+                                        '$make $model', 
+                                        style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16, color: Colors.black87),
+                                        overflow: TextOverflow.ellipsis,
+                                        maxLines: 1,
+                                      ),
                                     ],
                                   ),
                                 ),
