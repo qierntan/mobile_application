@@ -10,7 +10,7 @@ import 'package:mobile_application/screens/dashboard_screen.dart';
 import 'package:mobile_application/screens/notification_screen.dart';
 import 'package:mobile_application/services/notification_service.dart';
 import 'firebase_options.dart';
-import 'package:mobile_application/screens/Inventory/inventory_screen.dart';
+import 'package:mobile_application/screens/Inventory/inventory_list_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -128,7 +128,7 @@ class _HomeNavigatorState extends State<HomeNavigator> {
         _selectedScreen = AssignedJobsScreen();
         break;
       case 3:
-        _selectedScreen = InventoryScreen();
+        _selectedScreen = InventoryListScreen();
         break;
       case 4:
         _selectedScreen = InvoiceListScreen();
