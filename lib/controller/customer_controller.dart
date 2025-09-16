@@ -42,6 +42,42 @@ class CustomerController {
     }
   }
 
+  // Replace full vehicleIds array
+  Future<void> setCustomerVehicleIds(String customerId, List<String> vehicleIds) async {
+    try {
+      await _firestore.collection(_collectionName).doc(customerId).update({
+        'vehicleIds': vehicleIds,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      throw Exception('Error setting vehicleIds: $e');
+    }
+  }
+
+  // Add a vehicleId to the array (server-side atomic)
+  Future<void> addVehicleId(String customerId, String vehicleId) async {
+    try {
+      await _firestore.collection(_collectionName).doc(customerId).update({
+        'vehicleIds': FieldValue.arrayUnion([vehicleId]),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      throw Exception('Error adding vehicleId: $e');
+    }
+  }
+
+  // Remove a vehicleId from the array (server-side atomic)
+  Future<void> removeVehicleId(String customerId, String vehicleId) async {
+    try {
+      await _firestore.collection(_collectionName).doc(customerId).update({
+        'vehicleIds': FieldValue.arrayRemove([vehicleId]),
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      throw Exception('Error removing vehicleId: $e');
+    }
+  }
+
 
   // Search customers by name, email, or phone
   List<Customer> searchCustomers(List<Customer> customers, String query) {
