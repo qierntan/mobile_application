@@ -6,6 +6,7 @@ class Customer {
   final String? logoUrl;
   final DateTime? createdAt;
   final DateTime? updatedAt;
+  final List<String> vehicleIds;
 
   Customer({
     this.id,
@@ -15,6 +16,7 @@ class Customer {
     this.logoUrl,
     this.createdAt,
     this.updatedAt,
+    this.vehicleIds = const [],
   });
 
   // Create Customer from Firestore document
@@ -27,6 +29,12 @@ class Customer {
       logoUrl: map['logoUrl'],
       createdAt: map['createdAt']?.toDate(),
       updatedAt: map['updatedAt']?.toDate(),
+      vehicleIds: (map['vehicleIds'] is List)
+          ? (map['vehicleIds'] as List)
+              .where((e) => e != null)
+              .map((e) => e.toString())
+              .toList()
+          : const [],
     );
   }
 
@@ -39,6 +47,7 @@ class Customer {
       'logoUrl': logoUrl,
       'createdAt': createdAt,
       'updatedAt': updatedAt,
+      'vehicleIds': vehicleIds,
     };
   }
 
@@ -51,6 +60,7 @@ class Customer {
     String? logoUrl,
     DateTime? createdAt,
     DateTime? updatedAt,
+    List<String>? vehicleIds,
   }) {
     return Customer(
       id: id ?? this.id,
@@ -60,6 +70,7 @@ class Customer {
       logoUrl: logoUrl ?? this.logoUrl,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      vehicleIds: vehicleIds ?? this.vehicleIds,
     );
   }
 
@@ -76,7 +87,8 @@ class Customer {
         other.cusName == cusName &&
         other.cusEmail == cusEmail &&
         other.cusPhone == cusPhone &&
-        other.logoUrl == logoUrl;
+        other.logoUrl == logoUrl &&
+        _listEquals(other.vehicleIds, vehicleIds);
   }
 
   @override
@@ -85,8 +97,18 @@ class Customer {
         cusName.hashCode ^
         cusEmail.hashCode ^
         cusPhone.hashCode ^
-        logoUrl.hashCode;
+        logoUrl.hashCode ^
+        vehicleIds.hashCode;
   }
+}
+
+bool _listEquals(List<String> a, List<String> b) {
+  if (identical(a, b)) return true;
+  if (a.length != b.length) return false;
+  for (int i = 0; i < a.length; i++) {
+    if (a[i] != b[i]) return false;
+  }
+  return true;
 }
 
 class CustomerImage {

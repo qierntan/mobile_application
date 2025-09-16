@@ -6,7 +6,7 @@ import '../../main.dart';
 
 class CustomerDetailsScreen extends StatelessWidget {
   final String customerId;
-  const CustomerDetailsScreen({super.key, required this.customerId});
+  const CustomerDetailsScreen({Key? key, required this.customerId}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
@@ -36,6 +36,8 @@ class CustomerDetailsScreen extends StatelessWidget {
           final String phone = customer['cusPhone'] ?? 'No Phone';
           final String email = customer['cusEmail'] ?? 'No Email';
           final String logoUrl = customer['logoUrl'] ?? '';
+
+          final List<dynamic> vehicleIds = (customer['vehicleIds'] ?? []) as List<dynamic>;
 
           return ListView(
             children: [
@@ -145,85 +147,101 @@ class CustomerDetailsScreen extends StatelessWidget {
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87),
                 ),
               ),
-              // Vehicles List
-              StreamBuilder<QuerySnapshot>(
-                stream: FirebaseFirestore.instance.collection('Vehicle').where('customerId', isEqualTo: customerId).snapshots(),
-                builder: (context, vehicleSnapshot) {
-                  if (vehicleSnapshot.connectionState == ConnectionState.waiting) {
-                    return Center(child: CircularProgressIndicator());
-                  }
-                  if (!vehicleSnapshot.hasData || vehicleSnapshot.data!.docs.isEmpty) {
-                    return Padding(
-                      padding: const EdgeInsets.all(24.0),
-                      child: Center(child: Text('No vehicles found.')),
-                    );
-                  }
-                  final vehicles = vehicleSnapshot.data!.docs;
-                  return Column(
-                    children: vehicles.map((doc) {
-                      final v = doc.data() as Map<String, dynamic>;
-                      final String make = v['make'] ?? '';
-                      final String model = v['model'] ?? '';
-                      final String year = v['year']?.toString() ?? '';
-                      final String vin = v['vin'] ?? '';
-                      final String? imageUrl = v['imageUrl'];
-                      return GestureDetector(
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => VehicleDetailsScreen(vehicleId: doc.id),
-                            ),
-                          );
-                        },
-                        child: Container(
-                          margin: EdgeInsets.symmetric(horizontal: 20, vertical: 6),
-                          padding: EdgeInsets.all(16),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(16),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.05),
-                                blurRadius: 8,
-                                offset: Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: Row(
-                            children: [
-                              if (imageUrl != null && imageUrl.isNotEmpty)
-                                ClipRRect(
-                                  borderRadius: BorderRadius.circular(12),
-                                  child: Image.network(imageUrl, width: 70, height: 50, fit: BoxFit.cover),
-                                )
-                              else
-                                Container(
-                                  width: 70,
-                                  height: 50,
-                                  decoration: BoxDecoration(
-                                    color: Colors.grey.shade200,
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: Icon(Icons.directions_car, color: Colors.grey.shade500),
-                                ),
-                              SizedBox(width: 16),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text('$make $model', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16, color: Colors.black87)),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    }).toList(),
+              // Vehicles List (by vehicleIds array on Customer)
+              Builder(builder: (context) {
+                if (vehicleIds.isEmpty) {
+                  return Padding(
+                    padding: const EdgeInsets.all(24.0),
+                    child: Center(child: Text('No vehicles found.')),
                   );
-                },
-              ),
+                }
+
+                // Fetch all vehicles by id (handles >10 by individual gets)
+                return FutureBuilder<List<DocumentSnapshot<Map<String, dynamic>>>>(
+                  future: Future.wait(
+                    vehicleIds.map((id) => FirebaseFirestore.instance
+                        .collection('Vehicle')
+                        .doc(id.toString())
+                        .get()),
+                  ),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return Center(child: CircularProgressIndicator());
+                    }
+                    final docs = snapshot.data ?? [];
+                    if (docs.isEmpty) {
+                      return Padding(
+                        padding: const EdgeInsets.all(24.0),
+                        child: Center(child: Text('No vehicles found.')),
+                      );
+                    }
+
+                    return Column(
+                      children: docs.where((d) => d.exists).map((doc) {
+                        final v = doc.data() as Map<String, dynamic>;
+                        final String make = v['make'] ?? '';
+                        final String model = v['model'] ?? '';
+                        final String year = v['year']?.toString() ?? '';
+                        final String vin = v['vin'] ?? '';
+                        final String? imageUrl = v['imageUrl'];
+                        return GestureDetector(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => VehicleDetailsScreen(vehicleId: doc.id),
+                              ),
+                            );
+                          },
+                          child: Container(
+                            margin: EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+                            padding: EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withOpacity(0.05),
+                                  blurRadius: 8,
+                                  offset: Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: Row(
+                              children: [
+                                if (imageUrl != null && imageUrl.isNotEmpty)
+                                  ClipRRect(
+                                    borderRadius: BorderRadius.circular(12),
+                                    child: Image.network(imageUrl, width: 70, height: 50, fit: BoxFit.cover),
+                                  )
+                                else
+                                  Container(
+                                    width: 70,
+                                    height: 50,
+                                    decoration: BoxDecoration(
+                                      color: Colors.grey.shade200,
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Icon(Icons.directions_car, color: Colors.grey.shade500),
+                                  ),
+                                SizedBox(width: 16),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text('$make $model', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16, color: Colors.black87)),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      }).toList(),
+                    );
+                  },
+                );
+              }),
               SizedBox(height: 100),
             ],
           );
