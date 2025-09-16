@@ -925,6 +925,9 @@ class _PaymentDetailsDialogState extends State<PaymentDetailsDialog> {
               ? widget.paymentId
               : _generatePaymentId(invoiceDoc.id);
 
+      // Mark the notification as read since admin is viewing payment details
+      _markPaymentNotificationAsRead(paymentId);
+
       setState(() {
         invoiceDetails = {
           'id': invoiceDoc.id,
@@ -980,6 +983,34 @@ class _PaymentDetailsDialogState extends State<PaymentDetailsDialog> {
       final timestamp = DateTime.now().millisecondsSinceEpoch;
       final shortId = (timestamp % 10000).toString().padLeft(4, '0');
       return 'P$shortId';
+    }
+  }
+
+  // Mark payment notification as read in Firebase
+  Future<void> _markPaymentNotificationAsRead(String paymentId) async {
+    try {
+      final querySnapshot =
+          await FirebaseFirestore.instance
+              .collection('Notifications')
+              .where('type', isEqualTo: 'payment')
+              .where('isRead', isEqualTo: false)
+              .get();
+
+      for (var doc in querySnapshot.docs) {
+        final data = doc.data();
+        final notificationData = data['data'] as Map<String, dynamic>? ?? {};
+
+        // Check if this notification matches the payment data
+        if (notificationData['invoiceId'] == widget.paymentId ||
+            notificationData['paymentId'] == paymentId ||
+            notificationData['customerId'] == widget.paymentId) {
+          await doc.reference.update({'isRead': true});
+          print('Payment notification marked as read automatically');
+          break;
+        }
+      }
+    } catch (e) {
+      print('Error marking payment notification as read: $e');
     }
   }
 
