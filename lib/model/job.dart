@@ -49,6 +49,7 @@ class Job {
 }
 
 enum JobStatus {
+  unassigned,
   assigned,
   inProgress,
   completed,

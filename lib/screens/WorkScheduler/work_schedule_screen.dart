@@ -80,46 +80,54 @@ class _WorkScheduleScreenState extends State<WorkScheduleScreen> {
     }
   }
 
-  List<Job> _filterJobsByMechanicAndDate(List<DocumentSnapshot> docs) {
-    List<Job> allJobs = docs.map((doc) {
+  Future<List<Job>> _filterJobsByMechanicAndDateAsync(List<DocumentSnapshot> docs) async {
+    List<Job> allJobs = [];
+    
+    for (var doc in docs) {
       final data = doc.data() as Map<String, dynamic>;
       final statusFromFirestore = data['status'] ?? 'assigned';
       final parsedStatus = _parseJobStatus(statusFromFirestore);
-      // Enhanced debug logging for time field
-      print('=== DEBUG TIME FIELD FOR JOB ${doc.id} ===');
-      print('Raw time field from Firestore: ${data['time']}');
-      print('Time field type: ${data['time'].runtimeType}');
       
       final firestoreTime = (data['time'] as Timestamp?)?.toDate();
-      print('Converted firestoreTime: $firestoreTime');
+      final actualTime = firestoreTime ?? DateTime(2025, 9, 18, 10, 0);
       
-      // Don't fallback to DateTime.now() - this was causing your issue!
-      if (firestoreTime == null) {
-        print('⚠️  WARNING: Job ${doc.id} has null time field!');
+      // Fetch vehicle data using vehicleId
+      final vehicleId = data['vehicleId'] ?? '';
+      String plateNumber = '';
+      String carModel = '';
+      String imageUrl = '';
+      
+      if (vehicleId.isNotEmpty) {
+        try {
+          final vehicleDoc = await FirebaseFirestore.instance
+              .collection('Vehicle')
+              .doc(vehicleId)
+              .get();
+          
+          if (vehicleDoc.exists) {
+            final vehicleData = vehicleDoc.data() as Map<String, dynamic>;
+            plateNumber = vehicleData['carPlateNumber'] ?? '';
+            carModel = '${vehicleData['make'] ?? ''} ${vehicleData['model'] ?? ''}'.trim();
+            imageUrl = vehicleData['imageUrl'] ?? '';
+          }
+        } catch (e) {
+          print('Error loading vehicle $vehicleId: $e');
+        }
       }
       
-      final actualTime = firestoreTime ?? DateTime(2025, 9, 18, 10, 0); // Use your expected time as fallback for debugging
-      print('Using actualTime: $actualTime');
-      print('=== END DEBUG ===');
-      
-      return Job(
+      allJobs.add(Job(
         id: doc.id,
-        carModel: data['carModel'] ?? '',
-        plateNumber: data['plateNumber'] ?? '',
+        carModel: carModel,
+        plateNumber: plateNumber,
         mechanic: data['mechanicName'] ?? '',
         serviceType: data['serviceType'] ?? '',
         scheduledTime: actualTime,
-        imageUrl: data['imageUrl'] ?? '',
+        imageUrl: imageUrl,
         status: parsedStatus,
-      );
-    }).toList();
-
-    // Debug: Print all jobs
-    print('Total jobs: ${allJobs.length}');
-    for (Job job in allJobs) {
-      print('Job: ${job.serviceType}, Mechanic: ${job.mechanic}, Date: ${job.scheduledTime}, Status: ${job.status}');
+      ));
     }
 
+    // Filter by selected mechanic and date
     List<Job> filteredJobs = allJobs.where((job) {
       // Filter by selected mechanic
       bool mechanicMatch = job.mechanic == selectedMechanic;
@@ -130,13 +138,9 @@ class _WorkScheduleScreenState extends State<WorkScheduleScreen> {
                       localTime.month == selectedDate.month &&
                       localTime.day == selectedDate.day;
       
-      print('Job: ${job.serviceType}, Mechanic match: $mechanicMatch (${job.mechanic} == $selectedMechanic), Date match: $dateMatch (${localTime.day}/${localTime.month}/${localTime.year} == ${selectedDate.day}/${selectedDate.month}/${selectedDate.year})');
-      
-      // Show jobs regardless of status (remove status filtering for schedule view)
       return mechanicMatch && dateMatch;
     }).toList();
 
-    print('Filtered jobs: ${filteredJobs.length}');
     return filteredJobs;
   }
 
@@ -193,38 +197,28 @@ class _WorkScheduleScreenState extends State<WorkScheduleScreen> {
           ),
         ],
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                Text(
-                  serviceType,
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.black87,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                Text(
-                  'Vehicle: $vehicle',
-                  style: TextStyle(
-                    fontSize: 11,
-                    color: Colors.grey[600],
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
+          Text(
+            serviceType,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: Colors.black87,
             ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
-          Padding(
-            padding: EdgeInsets.only(left: 8),
-            child: Icon(Icons.edit, size: 16, color: Colors.grey[600]),
+          Text(
+            'Vehicle: $vehicle',
+            style: TextStyle(
+              fontSize: 11,
+              color: Colors.grey[600],
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),
@@ -409,51 +403,68 @@ class _WorkScheduleScreenState extends State<WorkScheduleScreen> {
                           return Container();
                         }
 
-                        // Filter jobs by selected mechanic and date
-                        List<Job> filteredJobs = _filterJobsByMechanicAndDate(snapshot.data!.docs);
+                        return FutureBuilder<List<Job>>(
+                          future: _filterJobsByMechanicAndDateAsync(snapshot.data!.docs),
+                          builder: (context, jobsSnapshot) {
+                            if (jobsSnapshot.connectionState == ConnectionState.waiting) {
+                              return Center(child: CircularProgressIndicator());
+                            }
 
-                        return Column(
-                          children: timeSlots.map((timeSlot) {
-                            // Find job for this time slot
-                            Job? job = _findJobForTimeSlot(filteredJobs, timeSlot);
-                            
-                            return Container(
-                              height: 68,
-                              margin: EdgeInsets.only(bottom: 8),
-                              child: Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  // Time column
-                                  SizedBox(
-                                    width: 80,
-                                    child: Text(
-                                      timeSlot,
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        color: Colors.grey[600],
-                                        fontWeight: FontWeight.w500,
+                            if (jobsSnapshot.hasError) {
+                              return Center(
+                                child: Text(
+                                  'Error loading jobs: ${jobsSnapshot.error}',
+                                  style: TextStyle(color: Colors.red),
+                                ),
+                              );
+                            }
+
+                            List<Job> filteredJobs = jobsSnapshot.data ?? [];
+
+                            return Column(
+                              children: timeSlots.map((timeSlot) {
+                                // Find job for this time slot
+                                Job? job = _findJobForTimeSlot(filteredJobs, timeSlot);
+                                
+                                return Container(
+                                  height: 68,
+                                  margin: EdgeInsets.only(bottom: 8),
+                                  child: Row(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      // Time column
+                                      SizedBox(
+                                        width: 80,
+                                        child: Text(
+                                          timeSlot,
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            color: Colors.grey[600],
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
                                       ),
-                                    ),
+                                      
+                                      // Vertical line separator
+                                      Container(
+                                        width: 1,
+                                        height: 60,
+                                        margin: EdgeInsets.symmetric(horizontal: 16),
+                                        color: Colors.grey[300],
+                                      ),
+                                      
+                                      // Job column
+                                      Expanded(
+                                        child: job != null 
+                                          ? _buildJobCard(job.serviceType, job.plateNumber, timeSlot)
+                                          : Container(),
+                                      ),
+                                    ],
                                   ),
-                                  
-                                  // Vertical line separator
-                                  Container(
-                                    width: 1,
-                                    height: 60,
-                                    margin: EdgeInsets.symmetric(horizontal: 16),
-                                    color: Colors.grey[300],
-                                  ),
-                                  
-                                  // Job column
-                                  Expanded(
-                                    child: job != null 
-                                      ? _buildJobCard(job.serviceType, job.plateNumber, timeSlot)
-                                      : Container(),
-                                  ),
-                                ],
-                              ),
+                                );
+                              }).toList(),
                             );
-                          }).toList(),
+                          },
                         );
                       },
                     ),

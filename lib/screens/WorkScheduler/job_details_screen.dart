@@ -110,7 +110,6 @@ class _JobDetailsScreenState extends State<JobDetailsScreen> {
   }
 
   Widget _buildCarImage() {
-    // For Toyota Camry, we'll show a car silhouette with the appropriate color
     return Container(
       width: double.infinity,
       height: 200,
@@ -129,25 +128,53 @@ class _JobDetailsScreenState extends State<JobDetailsScreen> {
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(16),
-        child: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                _getCarColor(vehicleData?.fullCarModel ?? widget.job.carModel),
-                _getCarColor(vehicleData?.fullCarModel ?? widget.job.carModel).withOpacity(0.8),
-              ],
-            ),
-          ),
-          child: Center(
-            child: Icon(
-              Icons.directions_car,
-              size: 80,
-              color: Colors.white,
-            ),
-          ),
-        ),
+        child: (vehicleData?.imageUrl != null && vehicleData!.imageUrl.isNotEmpty)
+            ? Image.network(
+                vehicleData!.imageUrl,
+                width: double.infinity,
+                height: 200,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) {
+                  return Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          _getCarColor(vehicleData?.fullCarModel ?? widget.job.carModel),
+                          _getCarColor(vehicleData?.fullCarModel ?? widget.job.carModel).withOpacity(0.8),
+                        ],
+                      ),
+                    ),
+                    child: Center(
+                      child: Icon(
+                        Icons.directions_car,
+                        size: 80,
+                        color: Colors.white,
+                      ),
+                    ),
+                  );
+                },
+              )
+            : Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      _getCarColor(vehicleData?.fullCarModel ?? widget.job.carModel),
+                      _getCarColor(vehicleData?.fullCarModel ?? widget.job.carModel).withOpacity(0.8),
+                    ],
+                  ),
+                ),
+                child: Center(
+                  child: Icon(
+                    Icons.directions_car,
+                    size: 80,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
       ),
     );
   }
