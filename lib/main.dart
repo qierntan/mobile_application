@@ -1,41 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:mobile_application/screens/Customer/customer_list_screen.dart';
-import 'package:mobile_application/screens/InvoiceManagement/invoice_list_screen.dart';
-import 'package:mobile_application/screens/InvoiceManagement/invoice_pdf_service.dart';
-import 'package:mobile_application/screens/InvoiceManagement/report.dart';
 import 'package:mobile_application/screens/login_screen.dart';
 import 'package:mobile_application/screens/dashboard_screen.dart';
+import 'package:mobile_application/screens/WorkScheduler/work_scheduler_screen.dart';
 import 'firebase_options.dart';
-import 'package:mobile_application/screens/Inventory/inventory_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-
-  // Start the payment success handler with retries
-  bool serverStarted = false;
-  int retryCount = 0;
-  const maxRetries = 3;
-
-  while (!serverStarted && retryCount < maxRetries) {
-    try {
-      await InvoicePdfService.setupPaymentSuccessHandler();
-      print('Payment success handler started successfully');
-      serverStarted = true;
-    } catch (e) {
-      retryCount++;
-      print(
-        'Failed to start payment success handler (attempt $retryCount): $e',
-      );
-      if (retryCount < maxRetries) {
-        await Future.delayed(Duration(seconds: 2)); // Wait before retrying
-      } else {
-        print('Failed to start server after $maxRetries attempts');
-      }
-    }
-  }
-
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
   runApp(const MainApp());
 }
 
@@ -55,7 +30,6 @@ class MainApp extends StatelessWidget {
         '/': (context) => HomeNavigator(),
         '/login': (context) => LoginScreen(),
         '/dashboard': (context) => HomeNavigator(),
-        '/invoice': (context) => InvoiceListScreen(),
       },
       debugShowCheckedModeBanner: false,
     );
@@ -63,6 +37,8 @@ class MainApp extends StatelessWidget {
 }
 
 class HomeNavigator extends StatefulWidget {
+  const HomeNavigator({super.key});
+
   @override
   _HomeNavigatorState createState() => _HomeNavigatorState();
 }
@@ -74,29 +50,26 @@ class _HomeNavigatorState extends State<HomeNavigator> {
     'Customers',
     'Jobs',
     'Inventory',
-    'Invoice',
+    'Settings',
   ];
 
   @override
   Widget build(BuildContext context) {
-    Widget _selectedScreen;
+    Widget selectedScreen;
 
     // Load screens based on navigation index
     switch (_currentIndex) {
       case 0:
-        _selectedScreen = DashboardScreen();
+        selectedScreen = DashboardScreen();
         break;
       case 1:
-        _selectedScreen = CustomerListScreen();
+        selectedScreen = CustomerListScreen();
         break;
-      case 3:
-        _selectedScreen = InventoryScreen();
-        break;
-      case 4:
-        _selectedScreen = InvoiceListScreen();
+      case 2:
+        selectedScreen = WorkSchedulerScreen();
         break;
       default:
-        _selectedScreen = Center(
+        selectedScreen = Center(
           child: Text(
             '🚧 This screen is under development.',
             style: TextStyle(fontSize: 18),
@@ -106,27 +79,8 @@ class _HomeNavigatorState extends State<HomeNavigator> {
     }
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(_titles[_currentIndex]),
-        centerTitle: true,
-        automaticallyImplyLeading: false,
-        actions:
-            _currentIndex == 4
-                ? [
-                  IconButton(
-                    icon: Icon(Icons.bar_chart),
-                    tooltip: 'Reports',
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => ReportingScreen()),
-                      );
-                    },
-                  ),
-                ]
-                : null,
-      ),
-      body: _selectedScreen,
+      appBar: AppBar(title: Text(_titles[_currentIndex]), centerTitle: true),
+      body: selectedScreen,
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         type: BottomNavigationBarType.fixed,
@@ -141,7 +95,10 @@ class _HomeNavigatorState extends State<HomeNavigator> {
             icon: Icon(Icons.inventory),
             label: 'Inventory',
           ),
-          BottomNavigationBarItem(icon: Icon(Icons.receipt), label: 'Invoice'),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.settings),
+            label: 'Settings',
+          ),
         ],
       ),
     );
