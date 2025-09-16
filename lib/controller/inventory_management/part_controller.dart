@@ -130,9 +130,21 @@ class PartController {
   }
 
   // Get parts with search and sort applied
-  List<Part> applyFiltersAndSort(List<Part> parts, String searchQuery, String sortBy, {bool ascending = true}) {
-    final searched = searchParts(parts, searchQuery);
-    return sortParts(searched, sortBy, ascending: ascending);
+  List<Part> applySearchAndSort(List<Part> parts, String searchQuery, String sortBy, {bool ascending = true}) {
+    var filtered = parts.where((p) => p.partName.toLowerCase().contains(searchQuery.toLowerCase())).toList();
+    filtered.sort((a, b) {
+      if (sortBy == 'Name') {
+        return ascending
+            ? a.partName.toLowerCase().compareTo(b.partName.toLowerCase())
+            : b.partName.toLowerCase().compareTo(a.partName.toLowerCase());
+      } else if (sortBy == 'Stock') {
+        final stockA = a.currentQty ?? 0;
+        final stockB = b.currentQty ?? 0;
+        return ascending ? stockA.compareTo(stockB) : stockB.compareTo(stockA);
+      }
+      return 0;
+    });
+    return filtered;
   }
 
   // Check if part exists by name
@@ -175,7 +187,8 @@ class PartController {
   // Upload image and return download URL
   Future<String> uploadPartImage(File imageFile, String partId) async {
     try {
-      final ref = _storage.ref().child('part_images/$partId.jpg');
+      final ext = imageFile.path.split('.').last;
+      final ref = _storage.ref().child('part_images/$partId.$ext');
       await ref.putFile(imageFile);
       return await ref.getDownloadURL(); // return image URL
     } catch (e) {

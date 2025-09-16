@@ -1,4 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:mobile_application/model/inventory_management/part.dart';
 import 'package:mobile_application/controller/inventory_management/part_controller.dart';
@@ -19,19 +18,14 @@ class _InventoryListScreenState extends State<InventoryListScreen> {
   final TextEditingController _searchController = TextEditingController();
   final PartController _partController = PartController();
   String _searchQuery = '';
-  String _sortOrder = 'A-Z'; // A-Z or Z-A
+  String _sortBy = 'Name'; 
+  bool _ascending = true;
   final GlobalKey _menuKey = GlobalKey();
 
   @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
-  }
-
-  void _toggleSortOrder() {
-    setState(() {
-      _sortOrder = _sortOrder == 'A-Z' ? 'Z-A' : 'A-Z';
-    });
   }
 
   @override
@@ -100,16 +94,15 @@ class _InventoryListScreenState extends State<InventoryListScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
             child: Row(
               children: [
-                TextButton.icon(
-                  onPressed: _toggleSortOrder,
-                  icon: const Icon(Icons.sort),
-                  label: Text('Sort: $_sortOrder'),
-                  style: TextButton.styleFrom(
-                    foregroundColor: Colors.black87,
-                    backgroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
+                DropdownButton<String>(
+                  value: _sortBy,
+                  items: ['Name', 'Stock'].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
+                  onChanged: (val) => setState(() => _sortBy = val!),
+                ),
+                const SizedBox(width: 12),
+                IconButton(
+                  icon: Icon(_ascending ? Icons.arrow_upward : Icons.arrow_downward),
+                  onPressed: () => setState(() => _ascending = !_ascending),
                 ),
                 const Spacer(),
                 IconButton(
@@ -144,11 +137,11 @@ class _InventoryListScreenState extends State<InventoryListScreen> {
                 }
 
                 final parts = snapshot.data ?? [];
-                final filtered = _partController.applyFiltersAndSort(
+                final filtered = _partController.applySearchAndSort(
                   parts,
                   _searchQuery,
-                  'name',
-                  ascending: _sortOrder == 'A-Z',
+                  _sortBy,
+                  ascending: _ascending,
                 );
 
                 if (filtered.isEmpty) {
@@ -199,7 +192,7 @@ class _InventoryListScreenState extends State<InventoryListScreen> {
                                       part.imageUrl!,
                                       width: 72,
                                       height: 72,
-                                      fit: BoxFit.cover,
+                                      fit: BoxFit.contain,
                                     )
                                   : Container(
                                       width: 72,

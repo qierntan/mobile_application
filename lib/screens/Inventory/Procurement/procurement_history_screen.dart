@@ -14,8 +14,8 @@ class _ProcurementHistoryScreenState extends State<ProcurementHistoryScreen> {
   final ProcurementController _procurementController = ProcurementController();
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
-  ProcurementStatus? _filterStatus;
   String _sortBy = 'Requested Date'; 
+  ProcurementStatus? _filterStatus;
   bool _descending = true;  
 
   @override
@@ -26,18 +26,12 @@ class _ProcurementHistoryScreenState extends State<ProcurementHistoryScreen> {
 
   Color _getStatusColor(ProcurementStatus status) {
     switch (status) {
-      case ProcurementStatus.pending:
-        return Colors.amber;
-      case ProcurementStatus.approved:
-        return Colors.blue;
-      case ProcurementStatus.rejected:
-        return Colors.red;
-      case ProcurementStatus.delivered:
-        return Colors.green;
-      case ProcurementStatus.cancelled:
-        return Colors.red;
-      case ProcurementStatus.delayed:
-        return Colors.grey;
+      case ProcurementStatus.pending: return Colors.amber;
+      case ProcurementStatus.approved: return Colors.blue;
+      case ProcurementStatus.rejected: return Colors.red;
+      case ProcurementStatus.delivered: return Colors.green;
+      case ProcurementStatus.cancelled: return Colors.red;
+      case ProcurementStatus.delayed: return Colors.grey;
     }
   }
 
@@ -124,30 +118,22 @@ class _ProcurementHistoryScreenState extends State<ProcurementHistoryScreen> {
               stream: _procurementController.getProcurements(),
               builder: (context, snapshot) {
                 if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-                var list = snapshot.data!;
+                final list = snapshot.data!;
+                final filtered = _procurementController.applySearchAndSort(
+                  list,
+                  _searchQuery,
+                  _sortBy,
+                  descending: _descending,
+                  statusFilter: _filterStatus,
+                );
 
-                // Search filter
-                list = list.where((p) => p.partName.toLowerCase().contains(_searchQuery)).toList();
-
-                // Status filter
-                if (_sortBy == 'Status' && _filterStatus != null) {
-                  list = list.where((p) => p.status == _filterStatus).toList();
-                }
-
-                // Sort by requested date
-                if (_sortBy == 'Requested Date') {
-                  list.sort((a, b) => _descending
-                      ? b.requestedDate.compareTo(a.requestedDate)
-                      : a.requestedDate.compareTo(b.requestedDate));
-                }
-
-                if (list.isEmpty) return const Center(child: Text("No procurements found"));
+                if (filtered.isEmpty) return const Center(child: Text("No procurements found"));
 
                 return ListView.builder(
                   padding: const EdgeInsets.only(bottom: 16),
-                  itemCount: list.length,
+                  itemCount: filtered.length,
                   itemBuilder: (context, index) {
-                    final p = list[index];
+                    final p = filtered[index];
                     return Container(
                       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                       padding: const EdgeInsets.all(12),
@@ -188,6 +174,12 @@ class _ProcurementHistoryScreenState extends State<ProcurementHistoryScreen> {
                                 ),
                                 Row(
                                   children: [
+                                    const Text("Warehouse: ", style: TextStyle(color: Colors.black54)),
+                                    Text(p.warehouse),
+                                  ],
+                                ),
+                                Row(
+                                  children: [
                                     const Text("Status: ", style: TextStyle(color: Colors.black54)),
                                     Text(
                                       p.status.label,
@@ -208,7 +200,6 @@ class _ProcurementHistoryScreenState extends State<ProcurementHistoryScreen> {
                               ],
                             ),
                           ),
-                          const Icon(Icons.chevron_right, color: Colors.black26),
                         ],
                       ),
                     );

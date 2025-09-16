@@ -40,6 +40,49 @@ class ProcurementController {
     return newId;
   }
 
+  // Search procurements by part
+  List<Procurement> searchProcurements(List<Procurement> procurements, String query) {
+    if (query.isEmpty) return procurements;
+    
+    final lowercaseQuery = query.toLowerCase();
+    return procurements.where((procurement) {
+      return procurement.partName.toLowerCase().contains(lowercaseQuery);
+    }).toList();
+  }
+
+  // Sort procurements by requested date or status
+  List<Procurement> sortProcurements(List<Procurement> procurements, String sortBy, {bool descending = true, ProcurementStatus? statusFilter}) {
+    List<Procurement> sorted = List.from(procurements);
+
+    if (sortBy == 'Requested Date') {
+      sorted.sort((a, b) => descending
+          ? b.requestedDate.compareTo(a.requestedDate)
+          : a.requestedDate.compareTo(b.requestedDate));
+    } else if (sortBy == 'Status') {
+      if (statusFilter != null) {
+        sorted = sorted.where((p) => p.status == statusFilter).toList();
+      }
+      // Show latest 
+      sorted.sort((a, b) => descending
+        ? b.requestedDate.compareTo(a.requestedDate)
+        : a.requestedDate.compareTo(b.requestedDate));
+    }
+
+    return sorted;
+  }
+
+  // Get procurements with search and sort applied
+  List<Procurement> applySearchAndSort(
+    List<Procurement> procurements, 
+    String searchQuery, 
+    String sortBy, {
+    bool descending = true,
+    ProcurementStatus? statusFilter,
+  }) {
+    final searched = searchProcurements(procurements, searchQuery);
+    return sortProcurements(searched, sortBy, descending: descending, statusFilter: statusFilter);
+  }
+
   Stream<List<Procurement>> getProcurementsByStatus(ProcurementStatus status) {
     return _firestore
         .collection(_collectionName)

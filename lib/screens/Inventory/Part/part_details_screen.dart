@@ -94,7 +94,7 @@ class PartDetailsScreen extends StatelessWidget {
                           part.imageUrl!,
                           width: 160,
                           height: 120,
-                          fit: BoxFit.cover,
+                          fit: BoxFit.contain,
                         )
                       : Container(
                           width: 160,
