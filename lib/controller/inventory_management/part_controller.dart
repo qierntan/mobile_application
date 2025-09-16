@@ -187,8 +187,7 @@ class PartController {
   // Upload image and return download URL
   Future<String> uploadPartImage(File imageFile, String partId) async {
     try {
-      final ext = imageFile.path.split('.').last;
-      final ref = _storage.ref().child('part_images/$partId.$ext');
+      final ref = _storage.ref().child('part_images/$partId.jpg');
       await ref.putFile(imageFile);
       return await ref.getDownloadURL(); // return image URL
     } catch (e) {
