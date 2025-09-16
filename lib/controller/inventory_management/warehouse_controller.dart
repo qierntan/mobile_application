@@ -1,5 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../model/warehouse.dart';
+import '../../model/inventory_management/warehouse.dart';
 
 class WarehouseController {
   static const String _collectionName = 'Warehouse';

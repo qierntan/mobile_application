@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'warehouse_details_screen.dart';
 import 'warehouse_add_screen.dart';
-import 'package:mobile_application/model/warehouse.dart';
-import 'package:mobile_application/controller/warehouse_controller.dart';
+import 'package:mobile_application/model/inventory_management/warehouse.dart';
+import 'package:mobile_application/controller/inventory_management/warehouse_controller.dart';
 
 class WarehouseListScreen extends StatefulWidget {
   const WarehouseListScreen({Key? key}) : super(key: key);
