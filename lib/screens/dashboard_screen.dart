@@ -74,7 +74,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         ),
                       ),
                       Text(
-                        'Arnaud Dresco',
+                        'Admin',
                         style: TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.w600,
@@ -132,11 +132,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           radius: 25,
                           backgroundImage: AssetImage('assets/profile.jpg'),
                           backgroundColor: Colors.grey[300],
-                          child: Icon(
-                            Icons.person,
-                            color: Colors.grey[600],
-                            size: 30,
-                          ),
                         ),
                       ),
                     ],
@@ -695,24 +690,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         radius: 40,
                         backgroundImage: AssetImage('assets/profile.jpg'),
                         backgroundColor: Colors.grey[300],
-                        child: Icon(
-                          Icons.person,
-                          color: Colors.grey[600],
-                          size: 40,
-                        ),
                       ),
                       SizedBox(height: 12),
                       Text(
-                        'Arnaud Dresco',
+                        'Admin',
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
                           color: Color(0xFF2E2E2E),
                         ),
-                      ),
-                      Text(
-                        'arnaud04@gmail.com',
-                        style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                       ),
                     ],
                   ),
@@ -728,34 +714,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         onTap: () {
                           Navigator.pop(context);
                           _showEditProfileDialog(context);
-                        },
-                      ),
-                      _buildProfileOption(
-                        icon: Icons.settings_outlined,
-                        title: 'Settings',
-                        onTap: () {
-                          Navigator.pop(context);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                '🚧 Settings screen is under development.',
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                      _buildProfileOption(
-                        icon: Icons.help_outline,
-                        title: 'Help & Support',
-                        onTap: () {
-                          Navigator.pop(context);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text(
-                                '🚧 Help & Support is under development.',
-                              ),
-                            ),
-                          );
                         },
                       ),
                       Divider(),
@@ -805,7 +763,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   void _showEditProfileDialog(BuildContext context) {
-    final _nameController = TextEditingController(text: 'Arnaud Dresco');
+    final _nameController = TextEditingController(text: 'Admin');
     final _oldPasswordController = TextEditingController();
     final _newPasswordController = TextEditingController();
 
@@ -824,16 +782,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   radius: 50,
                   backgroundImage: AssetImage('assets/profile.jpg'),
                   backgroundColor: Colors.grey[300],
-                  child: Icon(Icons.person, color: Colors.grey[600], size: 50),
                 ),
                 SizedBox(height: 20),
                 Text(
-                  'Arnaud Dresco',
+                  'Admin',
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                ),
-                Text(
-                  'arnaud04@gmail.com',
-                  style: TextStyle(color: Colors.grey[600]),
                 ),
                 SizedBox(height: 20),
                 // Name field

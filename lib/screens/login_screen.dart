@@ -76,18 +76,39 @@ class _LoginScreenState extends State<LoginScreen> {
                 width: 120,
                 height: 120,
                 decoration: BoxDecoration(
-                  color: Color(0xFF2E7D32),
                   shape: BoxShape.circle,
+                  border: Border.all(
+                    color: Color(0xFF2E7D32),
+                    width: 3,
+                  ),
                 ),
-                child: Center(
-                  child: Text(
-                    'GS',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 48,
-                      fontWeight: FontWeight.bold,
-                      fontStyle: FontStyle.italic,
-                    ),
+                child: ClipOval(
+                  child: Image.asset(
+                    'assets/profile.jpg',
+                    width: 120,
+                    height: 120,
+                    fit: BoxFit.cover,
+                    errorBuilder: (context, error, stackTrace) {
+                      return Container(
+                        width: 120,
+                        height: 120,
+                        decoration: BoxDecoration(
+                          color: Color(0xFF2E7D32),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Center(
+                          child: Text(
+                            'GS',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 48,
+                              fontWeight: FontWeight.bold,
+                              fontStyle: FontStyle.italic,
+                            ),
+                          ),
+                        ),
+                      );
+                    },
                   ),
                 ),
               ),

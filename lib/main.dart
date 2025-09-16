@@ -44,14 +44,14 @@ class MainApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Workshop CRM',
+      title: 'Greenstem WMS',
       theme: ThemeData(
         primarySwatch: Colors.teal,
         scaffoldBackgroundColor: Colors.grey[100],
       ),
-      initialRoute: '/login',
+      initialRoute: '/',
       routes: {
-        '/': (context) => HomeNavigator(),
+        '/': (context) => LoginScreen(),
         '/login': (context) => LoginScreen(),
         '/dashboard': (context) => HomeNavigator(),
         '/invoice': (context) => InvoiceListScreen(),
