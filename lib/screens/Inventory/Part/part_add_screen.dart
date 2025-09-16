@@ -5,7 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 
 class PartAddScreen extends StatefulWidget {
-  const PartAddScreen({Key? key}) : super(key: key);
+  const PartAddScreen({super.key});
 
   @override
   State<PartAddScreen> createState() => _PartAddScreenState();

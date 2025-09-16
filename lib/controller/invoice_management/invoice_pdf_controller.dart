@@ -119,7 +119,7 @@ class InvoicePdfController {
                       ],
                     ),
                   )
-                  .toList(),
+                  ,
             ],
           ),
           pw.SizedBox(height: 12),
@@ -365,7 +365,7 @@ class InvoicePdfController {
     } catch (e) {
       print('❌ Error handling payment success: $e');
       print('Stack trace: ${StackTrace.current}');
-      throw e;
+      rethrow;
     }
   }
 
@@ -432,7 +432,7 @@ class InvoicePdfController {
                   <th style="padding: 12px 8px; text-align: right; border-bottom: 2px solid #ddd;">Unit Price</th>
                   <th style="padding: 12px 8px; text-align: right; border-bottom: 2px solid #ddd;">Total</th>
                 </tr>
-                ${parts}
+                $parts
                 <tr>
                   <td colspan="3" style="padding: 8px; text-align: right; font-weight: bold;">Subtotal:</td>
                   <td style="padding: 8px; text-align: right;">RM ${invoice.subtotal.toStringAsFixed(2)}</td>

@@ -3,6 +3,8 @@ import 'package:mobile_application/main.dart';
 import 'package:mobile_application/services/remember_me_service.dart';
 
 class LoginScreen extends StatefulWidget {
+  const LoginScreen({super.key});
+
   @override
   _LoginScreenState createState() => _LoginScreenState();
 }
@@ -222,7 +224,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                   SizedBox(height: 30), // Reduced from 40
                   // Login button
-                  Container(
+                  SizedBox(
                     width: double.infinity,
                     height: 50,
                     child: ElevatedButton(

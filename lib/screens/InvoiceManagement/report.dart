@@ -526,7 +526,7 @@ class _ReportingScreenState extends State<ReportingScreen> {
                 );
               }),
             ] else
-              Container(
+              SizedBox(
                 height: 200,
                 child: Center(
                   child: Text(

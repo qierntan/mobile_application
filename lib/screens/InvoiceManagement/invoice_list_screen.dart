@@ -7,6 +7,8 @@ import 'package:mobile_application/controller/invoice_management/invoice_control
 import 'invoice_form_screen.dart';
 
 class InvoiceListScreen extends StatefulWidget {
+  const InvoiceListScreen({super.key});
+
   @override
   State<InvoiceListScreen> createState() => _InvoiceListScreenState();
 }

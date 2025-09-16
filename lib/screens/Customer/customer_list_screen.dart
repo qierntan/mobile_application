@@ -5,7 +5,7 @@ import 'package:mobile_application/model/customer.dart';
 import 'package:mobile_application/controller/customer_controller.dart';
 
 class CustomerListScreen extends StatefulWidget {
-  const CustomerListScreen({Key? key}) : super(key: key);
+  const CustomerListScreen({super.key});
 
   @override
   _CustomerListScreenState createState() => _CustomerListScreenState();

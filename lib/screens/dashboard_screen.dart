@@ -3,6 +3,8 @@ import 'package:mobile_application/services/remember_me_service.dart';
 import 'package:mobile_application/controller/dashboard_controller.dart';
 
 class DashboardScreen extends StatefulWidget {
+  const DashboardScreen({super.key});
+
   @override
   _DashboardScreenState createState() => _DashboardScreenState();
 }
@@ -216,7 +218,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       // Chart
                       Expanded(
                         child: Center(
-                          child: Container(
+                          child: SizedBox(
                             width: 200,
                             height: 200,
                             child:
@@ -483,9 +485,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   void _showEditProfileDialog(BuildContext context) {
-    final _nameController = TextEditingController(text: 'Admin');
-    final _oldPasswordController = TextEditingController();
-    final _newPasswordController = TextEditingController();
+    final nameController = TextEditingController(text: 'Admin');
+    final oldPasswordController = TextEditingController();
+    final newPasswordController = TextEditingController();
 
     showDialog(
       context: context,
@@ -511,7 +513,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 SizedBox(height: 20),
                 // Name field
                 TextField(
-                  controller: _nameController,
+                  controller: nameController,
                   decoration: InputDecoration(
                     labelText: 'Name',
                     border: OutlineInputBorder(
@@ -524,7 +526,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 SizedBox(height: 16),
                 // Old password field
                 TextField(
-                  controller: _oldPasswordController,
+                  controller: oldPasswordController,
                   obscureText: true,
                   decoration: InputDecoration(
                     labelText: 'Old password',
@@ -538,7 +540,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 SizedBox(height: 16),
                 // New password field
                 TextField(
-                  controller: _newPasswordController,
+                  controller: newPasswordController,
                   obscureText: true,
                   decoration: InputDecoration(
                     labelText: 'New password',

@@ -7,11 +7,11 @@ class AddVehicleScreen extends StatefulWidget {
   final Map<String, dynamic>? vehicleData;
 
   const AddVehicleScreen({
-    Key? key,
+    super.key,
     required this.customerId,
     this.vehicleId,
     this.vehicleData,
-  }) : super(key: key);
+  });
 
   @override
   _AddVehicleScreenState createState() => _AddVehicleScreenState();
@@ -52,7 +52,7 @@ class _AddVehicleScreenState extends State<AddVehicleScreen> {
       }
     }
     final newNumber = maxNumber + 1;
-    return 'V' + newNumber.toString().padLeft(3, '0');
+    return 'V${newNumber.toString().padLeft(3, '0')}';
   }
 
   @override
