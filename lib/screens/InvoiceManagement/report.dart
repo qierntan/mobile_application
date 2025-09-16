@@ -96,14 +96,19 @@ class _ReportingScreenState extends State<ReportingScreen> {
           invoices.docs.where((doc) {
             final data = doc.data() as Map<String, dynamic>;
 
-            // Use date field for filtering
-            if (data['date'] != null) {
-              final date = (data['date'] as Timestamp).toDate();
+            // Use paymentDate for paid invoices, fallback to date field
+            final dateToUse = data['paymentDate'] ?? data['date'];
+            if (dateToUse != null) {
+              final rawDateTime = (dateToUse as Timestamp).toDate();
+              // Add 8 hours to match UTC+8 timezone as shown in database
+              final date = rawDateTime.add(Duration(hours: 8));
               final isInMonth =
                   date.year == selectedYear && date.month == selectedMonth;
 
               if (isInMonth) {
-                print('DEBUG: Found invoice ${doc.id} with date: $date');
+                print(
+                  'DEBUG: Found invoice ${doc.id} with date: $date (using ${data['paymentDate'] != null ? 'paymentDate' : 'date'})',
+                );
               }
 
               return isInMonth;
@@ -141,7 +146,11 @@ class _ReportingScreenState extends State<ReportingScreen> {
       // Try multiple field names to find the amount
       final amount = (data['total'] ?? data['totalAmount'] ?? 0) as num;
       final amountDouble = amount.toDouble();
-      final date = (data['date'] as Timestamp).toDate();
+      // Use paymentDate for paid invoices, fallback to date field
+      final dateToUse = data['paymentDate'] ?? data['date'];
+      final rawDateTime = (dateToUse as Timestamp).toDate();
+      // Add 8 hours to match UTC+8 timezone as shown in database
+      final date = rawDateTime.add(Duration(hours: 8));
       final paymentMethod = data['paymentMethod'] as String? ?? 'Unknown';
       final customerName = data['customerName'] as String? ?? 'Unknown';
 
@@ -203,7 +212,7 @@ class _ReportingScreenState extends State<ReportingScreen> {
             (a, b) => (b['amount'] as double).compareTo(a['amount'] as double),
           );
 
-    // Convert payment trends
+    // Convert payment trends and sort in descending order by count (number of payments)
     monthlyPaymentTrends =
         paymentMethodCounts.entries
             .map(
@@ -214,9 +223,13 @@ class _ReportingScreenState extends State<ReportingScreen> {
               },
             )
             .toList()
-          ..sort(
-            (a, b) => (b['amount'] as double).compareTo(a['amount'] as double),
-          );
+          ..sort((a, b) {
+            // First sort by count in descending order
+            int countCompare = (b['count'] as int).compareTo(a['count'] as int);
+            if (countCompare != 0) return countCompare;
+            // If counts are equal, sort by amount in descending order
+            return (b['amount'] as double).compareTo(a['amount'] as double);
+          });
 
     // Set default top customers and payment trends to monthly data
     topCustomers = monthlyTopCustomers;
@@ -247,9 +260,17 @@ class _ReportingScreenState extends State<ReportingScreen> {
         final amount = (data['total'] ?? data['totalAmount'] ?? 0) as num;
         final amountDouble = amount.toDouble();
 
-        // Use date field for day calculation
-        final transactionDate = (data['date'] as Timestamp).toDate();
-        print('DEBUG: Using date: $transactionDate');
+        // Use paymentDate for paid invoices, fallback to date field
+        final dateToUse = data['paymentDate'] ?? data['date'];
+        // Get the raw timestamp and manually handle timezone to match database display
+        final rawDateTime = (dateToUse as Timestamp).toDate();
+        // Add 8 hours to match UTC+8 timezone as shown in database
+        final transactionDate = rawDateTime.add(Duration(hours: 8));
+        print(
+          'DEBUG: Using field: ${data['paymentDate'] != null ? 'paymentDate' : 'date'}',
+        );
+        print('DEBUG: Raw timestamp: $rawDateTime');
+        print('DEBUG: Adjusted for UTC+8: $transactionDate');
 
         final day = transactionDate.day;
         final paymentMethod = data['paymentMethod'] as String? ?? 'Unknown';
@@ -321,7 +342,7 @@ class _ReportingScreenState extends State<ReportingScreen> {
       specificMonthTopCustomers = [];
     }
 
-    // Convert payment trends for specific month
+    // Convert payment trends for specific month and sort in descending order by count
     try {
       specificMonthPaymentTrends =
           paymentMethodCounts.entries
@@ -333,10 +354,15 @@ class _ReportingScreenState extends State<ReportingScreen> {
                 },
               )
               .toList()
-            ..sort(
-              (a, b) =>
-                  (b['amount'] as double).compareTo(a['amount'] as double),
-            );
+            ..sort((a, b) {
+              // First sort by count in descending order
+              int countCompare = (b['count'] as int).compareTo(
+                a['count'] as int,
+              );
+              if (countCompare != 0) return countCompare;
+              // If counts are equal, sort by amount in descending order
+              return (b['amount'] as double).compareTo(a['amount'] as double);
+            });
     } catch (e) {
       print('ERROR processing payment trends: $e');
       specificMonthPaymentTrends = [];
@@ -359,6 +385,41 @@ class _ReportingScreenState extends State<ReportingScreen> {
     final nonZeroDays =
         dailyData.where((d) => (d['sales'] as double) > 0).toList();
 
+    // Define a consistent color palette for days
+    final List<Color> dayColors = [
+      Color(0xFF2196F3),
+      Color(0xFF4CAF50),
+      Color(0xFFFF9800),
+      Color(0xFFE91E63),
+      Color(0xFF9C27B0),
+      Color(0xFF00BCD4),
+      Color(0xFFFFC107),
+      Color(0xFF795548),
+      Color(0xFF607D8B),
+      Color(0xFFFF5722),
+      Color(0xFF3F51B5),
+      Color(0xFF009688),
+      Color(0xFFCDDC39),
+      Color(0xFFFF7043),
+      Color(0xFF42A5F5),
+      Color(0xFF66BB6A),
+      Color(0xFFFFB74D),
+      Color(0xFFEF5350),
+      Color(0xFFAB47BC),
+      Color(0xFF26C6DA),
+      Color(0xFFFFCA28),
+      Color(0xFF8D6E63),
+      Color(0xFF78909C),
+      Color(0xFFFF8A65),
+      Color(0xFF5C6BC0),
+      Color(0xFF26A69A),
+      Color(0xFFD4E157),
+      Color(0xFFFFCC02),
+      Color(0xFF29B6F6),
+      Color(0xFF7CB342),
+      Color(0xFFFFB300),
+    ];
+
     // Create pie chart data
     final pieData =
         nonZeroDays.map((d) {
@@ -370,12 +431,15 @@ class _ReportingScreenState extends State<ReportingScreen> {
                   .map((d) => d['sales'] as double)
                   .reduce((a, b) => a > b ? a : b);
 
+          // Use day number for consistent coloring (day 1-31)
+          final color =
+              isMax
+                  ? Color(0xFFFFC700)
+                  : dayColors[(day - 1) % dayColors.length];
+
           return PieChartSectionData(
             value: value,
-            color:
-                isMax
-                    ? Color(0xFFFFC700)
-                    : Colors.primaries[day % Colors.primaries.length],
+            color: color,
             title: 'Day $day',
             radius: isMax ? 50 : 40,
             titleStyle: TextStyle(
@@ -539,18 +603,53 @@ class _ReportingScreenState extends State<ReportingScreen> {
     final nonZeroData =
         detailsData.where((d) => (d['sales'] as double) > 0).toList();
 
+    // Define consistent colors for each month
+    final List<Color> monthColors = [
+      Color(0xFF2196F3), // Jan - Blue
+      Color(0xFF4CAF50), // Feb - Green
+      Color(0xFFFF9800), // Mar - Orange
+      Color(0xFFE91E63), // Apr - Pink
+      Color(0xFF9C27B0), // May - Purple
+      Color(0xFF00BCD4), // Jun - Cyan
+      Color(0xFFFFC107), // Jul - Amber
+      Color(0xFF795548), // Aug - Brown
+      Color(0xFF607D8B), // Sep - Blue Grey
+      Color(0xFFFF5722), // Oct - Deep Orange
+      Color(0xFF3F51B5), // Nov - Indigo
+      Color(0xFF009688), // Dec - Teal
+    ];
+
     final pieData =
         nonZeroData.map((d) {
           final value = d['sales'] as double;
+          final monthName = d['month'] as String;
           final isMax = maxItem != null && d == maxItem;
+
+          // Get month index from month name for consistent coloring
+          final monthNames = [
+            'Jan',
+            'Feb',
+            'Mar',
+            'Apr',
+            'May',
+            'Jun',
+            'Jul',
+            'Aug',
+            'Sep',
+            'Oct',
+            'Nov',
+            'Dec',
+          ];
+          final monthIndex = monthNames.indexOf(monthName);
+          final color =
+              isMax
+                  ? Color(0xFFFFC700)
+                  : (monthIndex >= 0 ? monthColors[monthIndex] : Colors.grey);
+
           return PieChartSectionData(
             value: value,
-            color:
-                isMax
-                    ? Color(0xFFFFC700)
-                    : Colors.primaries[detailsData.indexOf(d) %
-                        Colors.primaries.length],
-            title: '${d['month']}',
+            color: color,
+            title: monthName,
             radius: isMax ? 50 : 40,
             titleStyle: TextStyle(
               fontWeight: FontWeight.bold,
@@ -750,7 +849,7 @@ class _ReportingScreenState extends State<ReportingScreen> {
                     style: TextStyle(fontWeight: FontWeight.bold),
                   ),
                   subtitle: Text(
-                    '${method['count']} payments • RM ${(method['amount'] as double).toStringAsFixed(2)}',
+                    '${method['count']} payments',
                     style: TextStyle(fontSize: 12),
                   ),
                   trailing: Column(
@@ -764,10 +863,6 @@ class _ReportingScreenState extends State<ReportingScreen> {
                           color: Color(0xFF22211F),
                           fontSize: 14,
                         ),
-                      ),
-                      Text(
-                        '${method['count']} txns',
-                        style: TextStyle(fontSize: 10, color: Colors.grey[600]),
                       ),
                     ],
                   ),

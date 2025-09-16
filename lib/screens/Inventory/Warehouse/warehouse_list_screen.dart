@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'warehouse_details_screen.dart';
 import 'warehouse_add_screen.dart';
+import 'package:mobile_application/model/inventory_management/warehouse.dart';
+import 'package:mobile_application/controller/inventory_management/warehouse_controller.dart';
 
 class WarehouseListScreen extends StatefulWidget {
   const WarehouseListScreen({Key? key}) : super(key: key);
@@ -12,6 +13,7 @@ class WarehouseListScreen extends StatefulWidget {
 
 class _WarehouseListScreenState extends State<WarehouseListScreen> {
   final TextEditingController _searchController = TextEditingController();
+  final WarehouseController _warehouseController = WarehouseController();
   String _searchQuery = '';
   String _sortOrder = 'A-Z'; // A-Z or Z-A
 
@@ -27,14 +29,6 @@ class _WarehouseListScreenState extends State<WarehouseListScreen> {
     });
   }
 
-  Stream<QuerySnapshot<Map<String, dynamic>>> _warehouseStream(String query) {
-    final base = FirebaseFirestore.instance.collection('Warehouse');
-    if (query.trim().isEmpty) {
-      return base.orderBy('warehouseName').snapshots();
-    }
-    // Simple client-side filter after fetching; avoids composite indexes
-    return base.orderBy('warehouseName').snapshots();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -105,8 +99,8 @@ class _WarehouseListScreenState extends State<WarehouseListScreen> {
           ),
           const SizedBox(height: 8),
           Expanded(
-            child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-              stream: _warehouseStream(_searchController.text),
+            child: StreamBuilder<List<Warehouse>>(
+              stream: _warehouseController.getWarehouses(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
@@ -114,25 +108,14 @@ class _WarehouseListScreenState extends State<WarehouseListScreen> {
                 if (snapshot.hasError) {
                   return Center(child: Text('Error: ${snapshot.error}'));
                 }
-                final docs = snapshot.data?.docs ?? [];
+                final warehouses = snapshot.data ?? [];
 
-                // Client-side search and sort
-                final filtered = docs.where((d) {
-                  if (_searchQuery.isEmpty) return true;
-                  final data = d.data();
-                  final name = (data['warehouseName'] ?? '').toString().toLowerCase();
-                  final region = (data['region'] ?? '').toString().toLowerCase();
-                  return name.contains(_searchQuery) || region.contains(_searchQuery) || d.id.toLowerCase().contains(_searchQuery);
-                }).toList();
-
-                // Sort by warehouse name
-                filtered.sort((a, b) {
-                  final nameA = (a.data()['warehouseName'] ?? '').toString().toLowerCase();
-                  final nameB = (b.data()['warehouseName'] ?? '').toString().toLowerCase();
-                  return _sortOrder == 'A-Z' 
-                      ? nameA.compareTo(nameB)
-                      : nameB.compareTo(nameA);
-                });
+                // Apply search and sort using controller
+                final filtered = _warehouseController.getFilteredWarehouses(
+                  warehouses, 
+                  _searchQuery, 
+                  _sortOrder
+                );
 
                 if (filtered.isEmpty) {
                   return const Center(child: Text('No warehouses found'));
@@ -142,9 +125,8 @@ class _WarehouseListScreenState extends State<WarehouseListScreen> {
                   itemCount: filtered.length,
                   separatorBuilder: (_, __) => const Divider(height: 1, indent: 16, endIndent: 16),
                   itemBuilder: (context, index) {
-                    final doc = filtered[index];
-                    final data = doc.data();
-                    final name = (data['warehouseName'] ?? 'Unknown').toString();
+                    final warehouse = filtered[index];
+                    final name = warehouse.warehouseName;
                     return ListTile(
                       leading: const Icon(Icons.person_outline),
                       title: Text(name),
@@ -153,7 +135,7 @@ class _WarehouseListScreenState extends State<WarehouseListScreen> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) => WarehouseDetailsScreen(warehouseId: doc.id),
+                            builder: (_) => WarehouseDetailsScreen(warehouseId: warehouse.id!),
                           ),
                         );
                       },

@@ -1,9 +1,9 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:mobile_application/model/invoice.dart';
-import 'package:mobile_application/screens/InvoiceManagement/invoice_pdf_service.dart';
+import 'package:mobile_application/controller/invoice_management/invoice_pdf_controller.dart';
+import 'package:mobile_application/model/invoice_management/invoice.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:intl/intl.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 
 class InvoicePreviewScreen extends StatelessWidget {
   final Invoice invoice;
@@ -56,7 +56,7 @@ class InvoicePreviewScreen extends StatelessWidget {
                     SizedBox(height: 8),
                     Text('Invoice ID: ${invoice.id}'),
                     Text('Customer: ${invoice.customerName}'),
-                    Text('Vehicle: ${invoice.vehicleNumber}'),
+                    Text('Vehicle Id: ${invoice.vehicleId}'),
                   ],
                 ),
                 Column(
@@ -130,7 +130,7 @@ class InvoicePreviewScreen extends StatelessWidget {
                 final updatedInvoice = Invoice(
                   id: invoice.id,
                   customerName: data['customerName'] ?? '',
-                  vehicleNumber: data['vehicleNumber'] ?? '',
+                  vehicleId: data['vehicleId'] ?? '',
                   date: (data['date'] as Timestamp).toDate(),
                   dueDate: (data['dueDate'] as Timestamp).toDate(),
                   subtotal: (data['subtotal'] ?? 0.0).toDouble(),
@@ -138,16 +138,12 @@ class InvoicePreviewScreen extends StatelessWidget {
                   total: (data['totalAmount'] ?? 0.0).toDouble(),
                   status: invoice.status, // Keep the original status
                   parts: List<Map<String, dynamic>>.from(data['parts'] ?? []),
-                  services: List<Map<String, dynamic>>.from(
-                    data['services'] ?? [],
-                  ),
-                  labor: List<Map<String, dynamic>>.from(data['labor'] ?? []),
                   discount: (data['discount'] ?? 0.0).toDouble(),
                   discountType: data['discountType'] ?? 'fixed',
                   paymentDate: invoice.paymentDate,
                 );
 
-                await InvoicePdfService.generateAndShare(updatedInvoice);
+                await InvoicePdfController.generateAndShare(updatedInvoice);
               },
               icon: Icon(Icons.picture_as_pdf),
               label: Text('Export as PDF'),

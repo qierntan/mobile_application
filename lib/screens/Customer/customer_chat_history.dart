@@ -46,10 +46,27 @@ class _CustomerChatHistoryState extends State<CustomerChatHistory> {
                   ),
                 );
               },
-              child: CircleAvatar(
-                radius: 16,
-                backgroundColor: Colors.grey.shade300,
-                child: const Icon(Icons.person, color: Colors.white, size: 18),
+              child: FutureBuilder<DocumentSnapshot>(
+                future: FirebaseFirestore.instance.collection('Customer').doc(widget.customerId).get(),
+                builder: (context, snapshot) {
+                  if (snapshot.hasData && snapshot.data!.exists) {
+                    final customerData = snapshot.data!.data() as Map<String, dynamic>;
+                    final logoUrl = customerData['logoUrl']?.toString() ?? '';
+                    
+                    if (logoUrl.isNotEmpty) {
+                      return CircleAvatar(
+                        radius: 16,
+                        backgroundImage: NetworkImage(logoUrl),
+                        backgroundColor: Colors.grey.shade300,
+                      );
+                    }
+                  }
+                  return CircleAvatar(
+                    radius: 16,
+                    backgroundColor: Colors.grey.shade300,
+                    child: const Icon(Icons.person, color: Colors.white, size: 18),
+                  );
+                },
               ),
             ),
             const SizedBox(width: 10),

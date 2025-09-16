@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:mailer/mailer.dart';
 import 'package:mailer/smtp_server.dart';
-import 'package:mobile_application/model/invoice.dart';
+import 'package:mobile_application/controller/invoice_management/invoice_pdf_controller.dart';
+import 'package:mobile_application/model/invoice_management/invoice.dart';
 import 'package:mobile_application/screens/InvoiceManagement/invoice_form_screen.dart';
-import 'package:mobile_application/screens/InvoiceManagement/invoice_pdf_service.dart';
 import 'package:mobile_application/screens/InvoiceManagement/invoice_preview_screen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
@@ -23,22 +23,39 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
     try {
       print('Starting email reminder process...');
 
+      // First, get fresh invoice data from Firestore to ensure we have latest discount info
+      print('Fetching fresh invoice data from Firestore...');
+      final invoiceDoc =
+          await FirebaseFirestore.instance
+              .collection('Invoice')
+              .doc(widget.invoice.id)
+              .get();
+
+      if (!invoiceDoc.exists) {
+        throw Exception('Invoice not found in database');
+      }
+
+      final invoiceData = invoiceDoc.data() as Map<String, dynamic>;
+      print(
+        'Fresh invoice data retrieved with discount: ${invoiceData['discount']} (${invoiceData['discountType']})',
+      );
+
       // First, get customer data
-      print('Fetching customer data for: ${widget.invoice.customerName}');
+      print('Fetching customer data for: ${invoiceData['customerName']}');
       final customerDoc =
           await FirebaseFirestore.instance
               .collection('Customer')
-              .where('cusName', isEqualTo: widget.invoice.customerName)
+              .where('cusName', isEqualTo: invoiceData['customerName'])
               .get();
 
       if (customerDoc.docs.isEmpty) {
-        print('No customer found with name: ${widget.invoice.customerName}');
+        print('No customer found with name: ${invoiceData['customerName']}');
         throw Exception('Customer not found in database');
       }
 
       // Verify this invoice is actually overdue
-      if (widget.invoice.status != 'Overdue') {
-        print('Invoice status is not Overdue: ${widget.invoice.status}');
+      if (invoiceData['status'] != 'Overdue') {
+        print('Invoice status is not Overdue: ${invoiceData['status']}');
         throw Exception('Cannot send reminder for non-overdue invoice');
       }
 
@@ -52,11 +69,26 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
       }
       print('Customer email found: $customerEmail');
 
+      // Create fresh invoice object with latest data for payment link generation
+      final freshInvoice = Invoice(
+        id: widget.invoice.id,
+        customerName: invoiceData['customerName'] ?? '',
+        vehicleId: invoiceData['vehicleId'] ?? '',
+        date: (invoiceData['date'] as Timestamp).toDate(),
+        dueDate: (invoiceData['dueDate'] as Timestamp).toDate(),
+        subtotal: (invoiceData['subtotal'] ?? 0.0).toDouble(),
+        tax: (invoiceData['tax'] ?? 0.0).toDouble(),
+        total: (invoiceData['totalAmount'] ?? 0.0).toDouble(),
+        status: invoiceData['status'] ?? '',
+        parts: List<Map<String, dynamic>>.from(invoiceData['parts'] ?? []),
+        discount: (invoiceData['discount'] ?? 0.0).toDouble(),
+        discountType: invoiceData['discountType'] ?? 'fixed',
+      );
+
       // Generate the Stripe payment URL
       print('Generating payment link...');
-      final stripePaymentUrl = await InvoicePdfService.createStripePaymentLink(
-        widget.invoice,
-      );
+      final stripePaymentUrl =
+          await InvoicePdfController.createStripePaymentLink(freshInvoice);
       if (stripePaymentUrl == null) {
         print('Failed to generate Stripe payment link');
         throw Exception('Failed to generate payment link');
@@ -75,14 +107,10 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
         );
       }
 
-      // Extract services, parts, and labor from the invoice object
+      // Extract services, parts, and labor from the fresh invoice data
       print('Extracting invoice details...');
-      final services = widget.invoice.services;
-      final parts = widget.invoice.parts;
-      final labor = widget.invoice.labor;
-      print('Services: ${services.length} items');
+      final parts = List<Map<String, dynamic>>.from(invoiceData['parts'] ?? []);
       print('Parts: ${parts.length} items');
-      print('Labor: ${labor.length} items');
 
       print('Creating email content...');
       print('Building services HTML...');
@@ -101,50 +129,23 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
         </tr>''' : ''}''',
               )
               .join();
-
-      print('Building services HTML...');
-      String servicesHtml =
-          (services.isNotEmpty
-              ? services
-                  .map(
-                    (service) => '''<tr>
-          <td style="padding: 8px; border-bottom: 1px solid #ddd;">${service['description'] ?? 'Service'}</td>
-          <td style="padding: 8px; border-bottom: 1px solid #ddd; text-align: right;">RM ${(service['total'] ?? 0.0).toStringAsFixed(2)}</td>
-        </tr>''',
-                  )
-                  .join()
-              : '');
-
-      print('Building labor HTML...');
-      String laborHtml =
-          (labor.isNotEmpty
-              ? labor
-                  .map(
-                    (laborItem) => '''<tr>
-          <td style="padding: 8px; border-bottom: 1px solid #ddd;">${laborItem['description'] ?? 'Labor'}</td>
-          <td style="padding: 8px; border-bottom: 1px solid #ddd; text-align: right;">RM ${(laborItem['total'] ?? 0.0).toStringAsFixed(2)}</td>
-        </tr>''',
-                  )
-                  .join()
-              : '');
-
       final message =
           Message()
             ..from = Address('kfuichong0412@gmail.com', 'Invoice Management')
             ..recipients.add(customerEmail)
             ..subject =
-                'Payment Reminder: Invoice ${widget.invoice.customerName}'
+                'Payment Reminder: Invoice ${invoiceData['customerName']}'
             ..html = '''
           <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
             <h2 style="color: #d32f2f;">Payment Reminder</h2>
-            <p>Dear ${widget.invoice.customerName},</p>
+            <p>Dear ${invoiceData['customerName']},</p>
             <p>This is a friendly reminder that the payment for your invoice is overdue.</p>
             
             <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; margin: 20px 0;">
               <h3 style="margin-top: 0;">Invoice Details:</h3>
-              <p style="margin: 5px 0;">Vehicle Number: ${widget.invoice.vehicleNumber}</p>
-              <p style="margin: 5px 0;">Invoice Date: ${DateFormat('dd/MM/yyyy').format(widget.invoice.date)}</p>
-              <p style="margin: 5px 0;">Due Date: ${DateFormat('dd/MM/yyyy').format(widget.invoice.dueDate)}</p>
+              <p style="margin: 5px 0;">Vehicle Id: ${invoiceData['vehicleId'] ?? ''}</p>
+              <p style="margin: 5px 0;">Invoice Date: ${DateFormat('dd/MM/yyyy').format((invoiceData['date'] as Timestamp).toDate())}</p>
+              <p style="margin: 5px 0;">Due Date: ${DateFormat('dd/MM/yyyy').format((invoiceData['dueDate'] as Timestamp).toDate())}</p>
             </div>
 
             <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
@@ -153,25 +154,36 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
                 <th style="padding: 12px 8px; text-align: right; border-bottom: 2px solid #ddd;">Amount</th>
               </tr>
               
-              <!-- Services -->
-              ${servicesHtml}
               
               <!-- Parts -->
               ${partsHtml}
+            
               
-              <!-- Labor -->
-              ${laborHtml}
+              <!-- Subtotal -->
+              <tr>
+                <td style="padding: 8px; border-bottom: 1px solid #ddd;">Subtotal</td>
+                <td style="padding: 8px; border-bottom: 1px solid #ddd; text-align: right;">RM ${(invoiceData['subtotal'] ?? 0.0).toStringAsFixed(2)}</td>
+              </tr>
               
               <!-- Tax -->
               <tr>
-                <td style="padding: 8px; border-bottom: 1px solid #ddd;">Tax</td>
-                <td style="padding: 8px; border-bottom: 1px solid #ddd; text-align: right;">RM ${widget.invoice.tax.toStringAsFixed(2)}</td>
+                <td style="padding: 8px; border-bottom: 1px solid #ddd;">Tax (6%)</td>
+                <td style="padding: 8px; border-bottom: 1px solid #ddd; text-align: right;">RM ${(invoiceData['tax'] ?? 0.0).toStringAsFixed(2)}</td>
               </tr>
+
+              <!-- Discount (if applicable) -->
+              ${(invoiceData['discount'] ?? 0.0) > 0 ? '''
+              <tr>
+                <td style="padding: 8px; border-bottom: 1px solid #ddd; color: #d32f2f;">Discount ${invoiceData['discountType'] == 'percentage' ? '(${invoiceData['discount']}%)' : ''}</td>
+                <td style="padding: 8px; border-bottom: 1px solid #ddd; text-align: right; color: #d32f2f;">-RM ${invoiceData['discountType'] == 'percentage' ? ((invoiceData['subtotal'] ?? 0.0) * (invoiceData['discount'] ?? 0.0) / 100).toStringAsFixed(2) : (invoiceData['discount'] ?? 0.0).toStringAsFixed(2)}</td>
+              </tr>
+
+              ''' : ''}
               
               <!-- Total -->
               <tr style="font-weight: bold; background-color: #f5f5f5;">
                 <td style="padding: 12px 8px;">Total Amount</td>
-                <td style="padding: 12px 8px; text-align: right;">RM ${widget.invoice.total.toStringAsFixed(2)}</td>
+                <td style="padding: 12px 8px; text-align: right;">RM ${(invoiceData['totalAmount'] ?? 0.0).toStringAsFixed(2)}</td>
               </tr>
             </table>
 
@@ -315,7 +327,7 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
                         ),
                         SizedBox(height: 4),
                         Text(
-                          'Vehicle: ${data['vehicleId'] ?? ''}',
+                          'Vehicle Id: ${data['vehicleId'] ?? ''}',
                           style: TextStyle(color: Color(0xFF22211F)),
                         ),
                         Text(
@@ -408,7 +420,13 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
                                 data['discountType'] == 'percentage'
                                     ? 'Discount (${data['discount']}%)'
                                     : 'Discount',
-                            value: -(data['discount'] ?? 0.0).toDouble(),
+                            value:
+                                data['discountType'] == 'percentage'
+                                    ? -((data['subtotal'] ?? 0.0) *
+                                            (data['discount'] ?? 0.0) /
+                                            100)
+                                        .toDouble()
+                                    : -(data['discount'] ?? 0.0).toDouble(),
                             textColor: Colors.red,
                           ),
                         Divider(),
@@ -465,7 +483,7 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
                           ElevatedButton.icon(
                             onPressed: () async {
                               final stripePaymentUrl =
-                                  await InvoicePdfService.createStripePaymentLink(
+                                  await InvoicePdfController.createStripePaymentLink(
                                     widget.invoice,
                                   );
                               if (stripePaymentUrl != null) {
@@ -473,13 +491,15 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
                                   stripePaymentUrl: stripePaymentUrl,
                                 );
                               } else {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(
-                                      'Unable to generate payment link',
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        'Unable to generate payment link',
+                                      ),
                                     ),
-                                  ),
-                                );
+                                  );
+                                }
                               }
                             },
                             icon: Icon(Icons.visibility, color: Colors.white),
@@ -555,26 +575,59 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
                         ],
                         if (widget.invoice.status == 'Overdue') ...[
                           ElevatedButton.icon(
+                            onPressed: () {
+                              showModalBottomSheet(
+                                context: context,
+                                isScrollControlled: true,
+                                builder:
+                                    (_) => _PaymentMethodDialog(
+                                      onPaid: (method, note) {
+                                        _markAsPaid(method, note);
+                                      },
+                                    ),
+                              );
+                            },
+                            icon: Icon(Icons.attach_money, color: Colors.white),
+                            label: Text('Mark as Paid'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Color.fromARGB(
+                                255,
+                                61,
+                                248,
+                                123,
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              minimumSize: Size.fromHeight(48),
+                            ),
+                          ),
+                          SizedBox(height: 12),
+                          ElevatedButton.icon(
                             onPressed: () async {
                               try {
                                 await sendReminderEmail();
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(
-                                      'Reminder email sent successfully',
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        'Reminder email sent successfully',
+                                      ),
+                                      backgroundColor: Colors.green,
                                     ),
-                                    backgroundColor: Colors.green,
-                                  ),
-                                );
+                                  );
+                                }
                               } catch (e) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(
-                                      'Failed to send reminder email',
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        'Failed to send reminder email',
+                                      ),
+                                      backgroundColor: Colors.red,
                                     ),
-                                    backgroundColor: Colors.red,
-                                  ),
-                                );
+                                  );
+                                }
                               }
                             },
                             icon: Icon(Icons.email, color: Colors.white),
@@ -591,7 +644,7 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
                           ElevatedButton.icon(
                             onPressed: () async {
                               final stripePaymentUrl =
-                                  await InvoicePdfService.createStripePaymentLink(
+                                  await InvoicePdfController.createStripePaymentLink(
                                     widget.invoice,
                                   );
                               if (stripePaymentUrl != null) {
@@ -599,13 +652,15 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
                                   stripePaymentUrl: stripePaymentUrl,
                                 );
                               } else {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text(
-                                      'Unable to generate payment link',
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        'Unable to generate payment link',
+                                      ),
                                     ),
-                                  ),
-                                );
+                                  );
+                                }
                               }
                             },
                             icon: Icon(Icons.visibility, color: Colors.white),
@@ -649,7 +704,7 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
                               final updatedInvoice = Invoice(
                                 id: widget.invoice.id,
                                 customerName: data['customerName'] ?? '',
-                                vehicleNumber: data['vehicleId'] ?? '',
+                                vehicleId: data['vehicleId'] ?? '',
                                 date: (data['date'] as Timestamp).toDate(),
                                 dueDate:
                                     (data['dueDate'] as Timestamp).toDate(),
@@ -660,8 +715,6 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
                                 parts: List<Map<String, dynamic>>.from(
                                   data['parts'] ?? [],
                                 ),
-                                services: [],
-                                labor: [],
                                 discount: (data['discount'] ?? 0.0).toDouble(),
                                 discountType: data['discountType'] ?? 'fixed',
                               );
@@ -677,7 +730,7 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
                                 ),
                               );
 
-                              if (result == true) {
+                              if (result == true && mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   SnackBar(
                                     content: Text(
@@ -746,52 +799,62 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
                                       .update({'status': 'Unpaid'});
 
                                   // Show success message
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Row(
-                                        children: [
-                                          Icon(
-                                            Icons.check_circle,
-                                            color: Colors.white,
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Row(
+                                          children: [
+                                            Icon(
+                                              Icons.check_circle,
+                                              color: Colors.white,
+                                            ),
+                                            SizedBox(width: 8),
+                                            Text(
+                                              'Invoice approved successfully',
+                                            ),
+                                          ],
+                                        ),
+                                        backgroundColor: Colors.green,
+                                        duration: Duration(seconds: 2),
+                                        behavior: SnackBarBehavior.floating,
+                                        margin: EdgeInsets.all(16),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            8,
                                           ),
-                                          SizedBox(width: 8),
-                                          Text('Invoice approved successfully'),
-                                        ],
+                                        ),
                                       ),
-                                      backgroundColor: Colors.green,
-                                      duration: Duration(seconds: 2),
-                                      behavior: SnackBarBehavior.floating,
-                                      margin: EdgeInsets.all(16),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                    ),
-                                  );
+                                    );
+                                  }
 
                                   // Refresh page by popping and passing true
                                   Navigator.pop(context, true);
                                 } catch (e) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
-                                      content: Row(
-                                        children: [
-                                          Icon(
-                                            Icons.error_outline,
-                                            color: Colors.white,
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Row(
+                                          children: [
+                                            Icon(
+                                              Icons.error_outline,
+                                              color: Colors.white,
+                                            ),
+                                            SizedBox(width: 8),
+                                            Text('Failed to approve invoice'),
+                                          ],
+                                        ),
+                                        backgroundColor: Colors.red,
+                                        duration: Duration(seconds: 3),
+                                        behavior: SnackBarBehavior.floating,
+                                        margin: EdgeInsets.all(16),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            8,
                                           ),
-                                          SizedBox(width: 8),
-                                          Text('Failed to approve invoice'),
-                                        ],
+                                        ),
                                       ),
-                                      backgroundColor: Colors.red,
-                                      duration: Duration(seconds: 3),
-                                      behavior: SnackBarBehavior.floating,
-                                      margin: EdgeInsets.all(16),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(8),
-                                      ),
-                                    ),
-                                  );
+                                    );
+                                  }
                                 }
                               }
                             },
@@ -876,24 +939,26 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
             .delete();
 
         // Show success message
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                Icon(Icons.check_circle, color: Colors.white),
-                SizedBox(width: 8),
-                Text('Invoice deleted successfully'),
-              ],
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  Icon(Icons.check_circle, color: Colors.white),
+                  SizedBox(width: 8),
+                  Text('Invoice deleted successfully'),
+                ],
+              ),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 2),
+              behavior: SnackBarBehavior.floating,
+              margin: EdgeInsets.all(16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
             ),
-            backgroundColor: Colors.green,
-            duration: Duration(seconds: 2),
-            behavior: SnackBarBehavior.floating,
-            margin: EdgeInsets.all(16),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-          ),
-        );
+          );
+        }
       } catch (e) {
         // Show error message if deletion fails
         if (mounted) {
@@ -934,7 +999,7 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
     final invoice = Invoice(
       id: widget.invoice.id,
       customerName: data['customerName'] ?? '',
-      vehicleNumber: data['vehicleNumber'] ?? '',
+      vehicleId: data['vehicleId'] ?? '',
       date: (data['date'] as Timestamp).toDate(),
       dueDate: (data['dueDate'] as Timestamp).toDate(),
       subtotal: (data['subtotal'] ?? 0.0).toDouble(),
@@ -942,8 +1007,6 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
       total: (data['totalAmount'] ?? 0.0).toDouble(),
       status: widget.invoice.status, // Keep the original status
       parts: List<Map<String, dynamic>>.from(data['parts'] ?? []),
-      services: List<Map<String, dynamic>>.from(data['services'] ?? []),
-      labor: List<Map<String, dynamic>>.from(data['labor'] ?? []),
       discount: (data['discount'] ?? 0.0).toDouble(),
       discountType: data['discountType'] ?? 'fixed',
       paymentDate: (data['paymentDate'] as Timestamp?)?.toDate(),
@@ -981,43 +1044,51 @@ class _InvoiceDetailScreenState extends State<InvoiceDetailScreen> {
           });
 
       // Show success message
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              Icon(Icons.check_circle, color: Colors.white),
-              SizedBox(width: 8),
-              Text('Invoice Paid successfully'),
-            ],
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.check_circle, color: Colors.white),
+                SizedBox(width: 8),
+                Text('Invoice Paid successfully'),
+              ],
+            ),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
+            behavior: SnackBarBehavior.floating,
+            margin: EdgeInsets.all(16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
           ),
-          backgroundColor: Colors.green,
-          duration: Duration(seconds: 2),
-          behavior: SnackBarBehavior.floating,
-          margin: EdgeInsets.all(16),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        ),
-      );
+        );
+      }
 
       // Navigate back to refresh the list
       Navigator.pop(context, true);
     } catch (e) {
       // Show error message if update fails
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: [
-              Icon(Icons.error_outline, color: Colors.white),
-              SizedBox(width: 8),
-              Text('Failed to update payment status'),
-            ],
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                Icon(Icons.error_outline, color: Colors.white),
+                SizedBox(width: 8),
+                Text('Failed to update payment status'),
+              ],
+            ),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 3),
+            behavior: SnackBarBehavior.floating,
+            margin: EdgeInsets.all(16),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
           ),
-          backgroundColor: Colors.red,
-          duration: Duration(seconds: 3),
-          behavior: SnackBarBehavior.floating,
-          margin: EdgeInsets.all(16),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        ),
-      );
+        );
+      }
     }
   }
 }
@@ -1147,14 +1218,18 @@ class _PaymentMethodDialogState extends State<_PaymentMethodDialog> {
               onPressed: () {
                 if (selectedMethod != null) {
                   widget.onPaid(selectedMethod!, note);
-                  Navigator.of(context).pop();
+                  if (mounted) {
+                    Navigator.of(context).pop();
+                  }
                 } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Please select a payment method'),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Please select a payment method'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
                 }
               },
               style: ElevatedButton.styleFrom(

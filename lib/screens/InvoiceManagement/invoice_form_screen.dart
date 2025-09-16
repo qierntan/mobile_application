@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:mobile_application/model/invoice.dart';
+import 'package:flutter/services.dart';
+import 'package:mobile_application/model/invoice_management/invoice.dart';
 
 class InvoiceFormScreen extends StatefulWidget {
   final Invoice? invoice;
@@ -13,6 +14,7 @@ class InvoiceFormScreen extends StatefulWidget {
 }
 
 class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
+  final _formKey = GlobalKey<FormState>();
   List<Map<String, dynamic>> customers = [];
   Map<String, List<String>> customerVehicles = {};
   List<PartItem> partItems = [PartItem()];
@@ -51,7 +53,7 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
 
       // Initialize form with existing invoice data
       selectedCustomer = widget.invoice!.customerName;
-      selectedVehicle = widget.invoice!.vehicleNumber;
+      selectedVehicle = widget.invoice!.vehicleId;
       dueDate = widget.invoice!.dueDate;
 
       // Initialize discount values
@@ -121,6 +123,9 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
 
   Future<void> _submit() async {
     try {
+      // Validate form fields
+      if (!_validateAndSaveForm()) return;
+
       final invoiceData = {
         'customerName': selectedCustomer,
         'vehicleId': selectedVehicle,
@@ -190,6 +195,86 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
     }
   }
 
+  bool _validateAndSaveForm() {
+    final formValid = _formKey.currentState?.validate() ?? false;
+
+    // Due date check
+    if (dueDate == null) {
+      _showError('Please select a due date.');
+      return false;
+    }
+
+    // Customer & vehicle cross validation
+    if (selectedCustomer == null) {
+      _showError('Please select a customer.');
+      return false;
+    }
+    if (selectedVehicle == null) {
+      _showError('Please select a vehicle Id.');
+      return false;
+    }
+    final vehicles = customerVehicles[selectedCustomer] ?? const <String>[];
+    if (!vehicles.contains(selectedVehicle)) {
+      _showError('Selected vehicle does not belong to the chosen customer.');
+      return false;
+    }
+
+    // Parts validation
+    if (!_validateParts()) return false;
+
+    // Discount validation against amounts
+    final baseTotal = subtotal + tax; // before discount
+    if (!isPercentDiscount) {
+      if (discount < 0) {
+        _showError('Discount cannot be negative.');
+        return false;
+      }
+      if (discount > baseTotal) {
+        _showError(
+          'Discount cannot exceed subtotal + tax (RM ${baseTotal.toStringAsFixed(2)}).',
+        );
+        return false;
+      }
+    } else {
+      if (discount < 0 || discount > 100) {
+        _showError('Percentage discount must be between 0 and 100.');
+        return false;
+      }
+    }
+
+    if (!formValid) return false;
+    return true;
+  }
+
+  bool _validateParts() {
+    if (partItems.isEmpty) {
+      _showError('Please add at least one part/service.');
+      return false;
+    }
+    for (int i = 0; i < partItems.length; i++) {
+      final p = partItems[i];
+      if (p.description.trim().isEmpty) {
+        _showError('Item ${i + 1}: description is required.');
+        return false;
+      }
+      if (p.quantity <= 0) {
+        _showError('Item ${i + 1}: quantity must be at least 1.');
+        return false;
+      }
+      if (p.unitPrice < 0) {
+        _showError('Item ${i + 1}: unit price cannot be negative.');
+        return false;
+      }
+    }
+    return true;
+  }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
   Future<void> _selectDueDate(BuildContext context) async {
     final DateTime? picked = await showDatePicker(
       context: context,
@@ -212,459 +297,540 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
       appBar: AppBar(
         title: Text(widget.isEditing ? 'Edit Invoice' : 'Create Invoice'),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            // Update the customer dropdown section
-            DropdownButtonFormField<String>(
-              decoration: InputDecoration(
-                labelText: 'Customer',
-                contentPadding: EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 14,
+      body: Form(
+        key: _formKey,
+        autovalidateMode:
+            AutovalidateMode.disabled, // Changed from onUserInteraction
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            children: [
+              // Update the customer dropdown section
+              DropdownButtonFormField<String>(
+                decoration: InputDecoration(
+                  labelText: 'Customer',
+                  contentPadding: EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 14,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                 ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
+                value: selectedCustomer,
+                items: customers
+                    .map((c) => c['name'] as String)
+                    .toList(
+                      growable: false,
+                    ) // Using fixed-length list for better performance
+                    .map(
+                      (name) =>
+                          DropdownMenuItem(value: name, child: Text(name)),
+                    )
+                    .toList(
+                      growable: false,
+                    ), // Fixed-length list for menu items
+                onChanged: (value) {
+                  setState(() {
+                    selectedCustomer = value;
+                    selectedVehicle =
+                        null; // Reset vehicle selection when customer changes
+                  });
+                },
+                validator:
+                    (value) =>
+                        value == null || value.isEmpty
+                            ? 'Please select a customer'
+                            : null,
+                hint: Text('Select Customer'),
+              ),
+              SizedBox(height: 12),
+              // Update the vehicle dropdown section
+              DropdownButtonFormField<String>(
+                decoration: InputDecoration(
+                  labelText: 'Vehicle Id',
+                  contentPadding: EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 14,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                value: selectedVehicle,
+                items: (selectedCustomer != null
+                        ? (customerVehicles[selectedCustomer] ?? []).toList(
+                          growable: false,
+                        )
+                        : <String>[])
+                    .map(
+                      (vehicle) => DropdownMenuItem(
+                        value: vehicle,
+                        child: Text(vehicle),
+                      ),
+                    )
+                    .toList(
+                      growable: false,
+                    ), // Fixed-length list for menu items
+                onChanged:
+                    selectedCustomer != null
+                        ? (value) {
+                          setState(() {
+                            selectedVehicle = value;
+                          });
+                        }
+                        : null,
+                validator:
+                    (value) =>
+                        value == null || value.isEmpty
+                            ? 'Please select a vehicle Id'
+                            : null,
+                hint: Text(
+                  selectedCustomer == null
+                      ? 'Select a customer first'
+                      : 'Select Vehicle Id',
                 ),
               ),
-              value: selectedCustomer,
-              items: customers
-                  .map((c) => c['name'] as String)
-                  .toList(
-                    growable: false,
-                  ) // Using fixed-length list for better performance
-                  .map(
-                    (name) => DropdownMenuItem(value: name, child: Text(name)),
-                  )
-                  .toList(growable: false), // Fixed-length list for menu items
-              onChanged: (value) {
-                setState(() {
-                  selectedCustomer = value;
-                  selectedVehicle =
-                      null; // Reset vehicle selection when customer changes
-                });
-              },
-              hint: Text('Select Customer'),
-            ),
-            SizedBox(height: 12),
-            // Update the vehicle dropdown section
-            DropdownButtonFormField<String>(
-              decoration: InputDecoration(
-                labelText: 'Vehicle Number',
-                contentPadding: EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 14,
-                ),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
+              SizedBox(height: 12),
+              GestureDetector(
+                onTap: () => _selectDueDate(context),
+                child: Container(
+                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.grey.shade300),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Due Date',
+                        style: TextStyle(
+                          color: Colors.grey.shade700,
+                          fontSize: 16,
+                        ),
+                      ),
+                      Text(
+                        dueDate != null
+                            ? '${dueDate!.day}/${dueDate!.month}/${dueDate!.year}'
+                            : 'Select Due Date',
+                        style: TextStyle(
+                          color:
+                              dueDate != null
+                                  ? Colors.black
+                                  : Colors.grey.shade600,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-              value: selectedVehicle,
-              items: (selectedCustomer != null
-                      ? (customerVehicles[selectedCustomer] ?? []).toList(
-                        growable: false,
-                      )
-                      : <String>[])
-                  .map(
-                    (vehicle) =>
-                        DropdownMenuItem(value: vehicle, child: Text(vehicle)),
-                  )
-                  .toList(growable: false), // Fixed-length list for menu items
-              onChanged:
-                  selectedCustomer != null
-                      ? (value) {
-                        setState(() {
-                          selectedVehicle = value;
-                        });
-                      }
-                      : null,
-              hint: Text(
-                selectedCustomer == null
-                    ? 'Select a customer first'
-                    : 'Select Vehicle Number',
-              ),
-            ),
-            SizedBox(height: 12),
-            GestureDetector(
-              onTap: () => _selectDueDate(context),
-              child: Container(
-                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey.shade300),
-                  borderRadius: BorderRadius.circular(8),
+              SizedBox(height: 16),
+              Card(
+                elevation: 4,
+                margin: EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(15),
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                child: Column(
                   children: [
-                    Text(
-                      'Due Date',
-                      style: TextStyle(
-                        color: Colors.grey.shade700,
-                        fontSize: 16,
+                    // Header
+                    Container(
+                      width: double.infinity,
+                      padding: EdgeInsets.symmetric(
+                        vertical: 16,
+                        horizontal: 20,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.teal.shade600,
+                        borderRadius: BorderRadius.only(
+                          topLeft: Radius.circular(15),
+                          topRight: Radius.circular(15),
+                        ),
+                      ),
+                      child: Text(
+                        'Parts/Services',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
                       ),
                     ),
-                    Text(
-                      dueDate != null
-                          ? '${dueDate!.day}/${dueDate!.month}/${dueDate!.year}'
-                          : 'Select Due Date',
-                      style: TextStyle(
-                        color:
-                            dueDate != null
-                                ? Colors.black
-                                : Colors.grey.shade600,
-                        fontSize: 16,
+                    // List Items
+                    Padding(
+                      padding: EdgeInsets.all(16),
+                      child: ListView.builder(
+                        shrinkWrap: true,
+                        physics: NeverScrollableScrollPhysics(),
+                        itemCount: partItems.length,
+                        itemBuilder: (context, index) {
+                          return Card(
+                            margin: EdgeInsets.only(bottom: 12),
+                            elevation: 2,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              side: BorderSide(color: Colors.teal.shade50),
+                            ),
+                            child: Container(
+                              padding: EdgeInsets.all(12),
+                              child: Column(
+                                children: [
+                                  // Description Field
+                                  TextFormField(
+                                    decoration: InputDecoration(
+                                      labelText: 'Description',
+                                      filled: true,
+                                      fillColor: Colors.white,
+                                      enabledBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                        borderSide: BorderSide(
+                                          color: Colors.teal.shade100,
+                                        ),
+                                      ),
+                                      focusedBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                        borderSide: BorderSide(
+                                          color: Colors.teal,
+                                          width: 2,
+                                        ),
+                                      ),
+                                      contentPadding: EdgeInsets.all(12),
+                                    ),
+                                    initialValue:
+                                        partItems[index]
+                                            .description, // Add this line
+                                    maxLines: null,
+                                    onChanged: (val) {
+                                      setState(() {
+                                        partItems[index].description = val;
+                                      });
+                                    },
+                                    validator: (val) {
+                                      if (val == null || val.trim().isEmpty) {
+                                        return 'Description is required';
+                                      }
+                                      return null;
+                                    },
+                                  ),
+                                  SizedBox(height: 12),
+                                  // Quantity and Unit Price Row
+                                  Row(
+                                    children: [
+                                      // Quantity Field
+                                      Expanded(
+                                        child: TextFormField(
+                                          textAlign: TextAlign.center,
+                                          decoration: InputDecoration(
+                                            labelText: 'Quantity',
+                                            filled: true,
+                                            fillColor: Colors.white,
+                                            enabledBorder: OutlineInputBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                              borderSide: BorderSide(
+                                                color: Colors.teal.shade100,
+                                              ),
+                                            ),
+                                            focusedBorder: OutlineInputBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                              borderSide: BorderSide(
+                                                color: Colors.teal,
+                                                width: 2,
+                                              ),
+                                            ),
+                                          ),
+                                          initialValue:
+                                              partItems[index].quantity
+                                                  .toString(), // Add this line
+                                          keyboardType: TextInputType.number,
+                                          inputFormatters: [
+                                            FilteringTextInputFormatter
+                                                .digitsOnly,
+                                          ],
+                                          onChanged: (val) {
+                                            setState(() {
+                                              partItems[index].quantity =
+                                                  int.tryParse(val) ?? 1;
+                                            });
+                                          },
+                                          validator: (val) {
+                                            final q = int.tryParse(val ?? '');
+                                            if (q == null || q <= 0) {
+                                              return 'Enter a valid quantity (>=1)';
+                                            }
+                                            return null;
+                                          },
+                                        ),
+                                      ),
+                                      SizedBox(width: 8),
+                                      // Unit Price Field
+                                      Expanded(
+                                        flex: 2,
+                                        child: TextFormField(
+                                          textAlign: TextAlign.center,
+                                          decoration: InputDecoration(
+                                            labelText: 'Unit Price (RM)',
+                                            filled: true,
+                                            fillColor: Colors.white,
+                                            enabledBorder: OutlineInputBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                              borderSide: BorderSide(
+                                                color: Colors.teal.shade100,
+                                              ),
+                                            ),
+                                            focusedBorder: OutlineInputBorder(
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                              borderSide: BorderSide(
+                                                color: Colors.teal,
+                                                width: 2,
+                                              ),
+                                            ),
+                                          ),
+                                          initialValue: partItems[index]
+                                              .unitPrice
+                                              .toStringAsFixed(
+                                                2,
+                                              ), // Add this line
+                                          keyboardType:
+                                              const TextInputType.numberWithOptions(
+                                                decimal: true,
+                                              ),
+                                          inputFormatters: [
+                                            FilteringTextInputFormatter.allow(
+                                              RegExp(r'^\d*\.?\d{0,2}'),
+                                            ),
+                                          ],
+                                          onChanged: (val) {
+                                            setState(() {
+                                              partItems[index].unitPrice =
+                                                  double.tryParse(val) ?? 0.0;
+                                            });
+                                          },
+                                          validator: (val) {
+                                            final p = double.tryParse(
+                                              val ?? '',
+                                            );
+                                            if (p == null || p < 0) {
+                                              return 'Enter a valid price (>=0)';
+                                            }
+                                            return null;
+                                          },
+                                        ),
+                                      ),
+                                      // Delete Button
+                                      if (partItems.length > 1)
+                                        Padding(
+                                          padding: const EdgeInsets.only(
+                                            left: 8,
+                                          ),
+                                          child: IconButton(
+                                            icon: Icon(Icons.delete_outline),
+                                            color: Colors.red.shade400,
+                                            onPressed: () {
+                                              setState(() {
+                                                partItems.removeAt(index);
+                                              });
+                                            },
+                                          ),
+                                        ),
+                                    ],
+                                  ),
+                                  SizedBox(height: 12),
+                                  // Total Row
+                                  Container(
+                                    padding: EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 8,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.teal.shade50,
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(
+                                        color: Colors.teal.shade100,
+                                      ),
+                                    ),
+                                    child: Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Text(
+                                          'Total:',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w600,
+                                            color: Colors.teal.shade700,
+                                          ),
+                                        ),
+                                        Text(
+                                          'RM ${partItems[index].total.toStringAsFixed(2)}',
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w600,
+                                            color: Colors.teal.shade700,
+                                            fontSize: 15,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    // Add Item Button
+                    Padding(
+                      padding: EdgeInsets.only(bottom: 16),
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          setState(() {
+                            partItems.add(PartItem());
+                          });
+                        },
+                        icon: Icon(Icons.add_circle_outline),
+                        label: Text('Add New Item'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.teal.shade600,
+                          foregroundColor: Colors.white,
+                          padding: EdgeInsets.symmetric(
+                            horizontal: 32,
+                            vertical: 16,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          elevation: 2,
+                          textStyle: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
                       ),
                     ),
                   ],
                 ),
               ),
-            ),
-            SizedBox(height: 16),
-            Card(
-              elevation: 4,
-              margin: EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(15),
-              ),
-              child: Column(
+              SizedBox(height: 16),
+              Row(
                 children: [
-                  // Header
-                  Container(
-                    width: double.infinity,
-                    padding: EdgeInsets.symmetric(vertical: 16, horizontal: 20),
-                    decoration: BoxDecoration(
-                      color: Colors.teal.shade600,
-                      borderRadius: BorderRadius.only(
-                        topLeft: Radius.circular(15),
-                        topRight: Radius.circular(15),
+                  Expanded(
+                    child: TextFormField(
+                      decoration: InputDecoration(
+                        labelText: 'Discount',
+                        border: OutlineInputBorder(),
                       ),
-                    ),
-                    child: Text(
-                      'Parts/Services',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
                       ),
-                    ),
-                  ),
-                  // List Items
-                  Padding(
-                    padding: EdgeInsets.all(16),
-                    child: ListView.builder(
-                      shrinkWrap: true,
-                      physics: NeverScrollableScrollPhysics(),
-                      itemCount: partItems.length,
-                      itemBuilder: (context, index) {
-                        return Card(
-                          margin: EdgeInsets.only(bottom: 12),
-                          elevation: 2,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                            side: BorderSide(color: Colors.teal.shade50),
-                          ),
-                          child: Container(
-                            padding: EdgeInsets.all(12),
-                            child: Column(
-                              children: [
-                                // Description Field
-                                TextFormField(
-                                  decoration: InputDecoration(
-                                    labelText: 'Description',
-                                    filled: true,
-                                    fillColor: Colors.white,
-                                    enabledBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(8),
-                                      borderSide: BorderSide(
-                                        color: Colors.teal.shade100,
-                                      ),
-                                    ),
-                                    focusedBorder: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(8),
-                                      borderSide: BorderSide(
-                                        color: Colors.teal,
-                                        width: 2,
-                                      ),
-                                    ),
-                                    contentPadding: EdgeInsets.all(12),
-                                  ),
-                                  initialValue:
-                                      partItems[index]
-                                          .description, // Add this line
-                                  maxLines: null,
-                                  onChanged: (val) {
-                                    setState(() {
-                                      partItems[index].description = val;
-                                    });
-                                  },
-                                ),
-                                SizedBox(height: 12),
-                                // Quantity and Unit Price Row
-                                Row(
-                                  children: [
-                                    // Quantity Field
-                                    Expanded(
-                                      child: TextFormField(
-                                        textAlign: TextAlign.center,
-                                        decoration: InputDecoration(
-                                          labelText: 'Quantity',
-                                          filled: true,
-                                          fillColor: Colors.white,
-                                          enabledBorder: OutlineInputBorder(
-                                            borderRadius: BorderRadius.circular(
-                                              8,
-                                            ),
-                                            borderSide: BorderSide(
-                                              color: Colors.teal.shade100,
-                                            ),
-                                          ),
-                                          focusedBorder: OutlineInputBorder(
-                                            borderRadius: BorderRadius.circular(
-                                              8,
-                                            ),
-                                            borderSide: BorderSide(
-                                              color: Colors.teal,
-                                              width: 2,
-                                            ),
-                                          ),
-                                        ),
-                                        initialValue:
-                                            partItems[index].quantity
-                                                .toString(), // Add this line
-                                        keyboardType: TextInputType.number,
-                                        onChanged: (val) {
-                                          setState(() {
-                                            partItems[index].quantity =
-                                                int.tryParse(val) ?? 1;
-                                          });
-                                        },
-                                      ),
-                                    ),
-                                    SizedBox(width: 8),
-                                    // Unit Price Field
-                                    Expanded(
-                                      flex: 2,
-                                      child: TextFormField(
-                                        textAlign: TextAlign.center,
-                                        decoration: InputDecoration(
-                                          labelText: 'Unit Price (RM)',
-                                          filled: true,
-                                          fillColor: Colors.white,
-                                          enabledBorder: OutlineInputBorder(
-                                            borderRadius: BorderRadius.circular(
-                                              8,
-                                            ),
-                                            borderSide: BorderSide(
-                                              color: Colors.teal.shade100,
-                                            ),
-                                          ),
-                                          focusedBorder: OutlineInputBorder(
-                                            borderRadius: BorderRadius.circular(
-                                              8,
-                                            ),
-                                            borderSide: BorderSide(
-                                              color: Colors.teal,
-                                              width: 2,
-                                            ),
-                                          ),
-                                        ),
-                                        initialValue: partItems[index].unitPrice
-                                            .toStringAsFixed(
-                                              2,
-                                            ), // Add this line
-                                        keyboardType: TextInputType.number,
-                                        onChanged: (val) {
-                                          setState(() {
-                                            partItems[index].unitPrice =
-                                                double.tryParse(val) ?? 0.0;
-                                          });
-                                        },
-                                      ),
-                                    ),
-                                    // Delete Button
-                                    if (partItems.length > 1)
-                                      Padding(
-                                        padding: const EdgeInsets.only(left: 8),
-                                        child: IconButton(
-                                          icon: Icon(Icons.delete_outline),
-                                          color: Colors.red.shade400,
-                                          onPressed: () {
-                                            setState(() {
-                                              partItems.removeAt(index);
-                                            });
-                                          },
-                                        ),
-                                      ),
-                                  ],
-                                ),
-                                SizedBox(height: 12),
-                                // Total Row
-                                Container(
-                                  padding: EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 8,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: Colors.teal.shade50,
-                                    borderRadius: BorderRadius.circular(8),
-                                    border: Border.all(
-                                      color: Colors.teal.shade100,
-                                    ),
-                                  ),
-                                  child: Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Text(
-                                        'Total:',
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.w600,
-                                          color: Colors.teal.shade700,
-                                        ),
-                                      ),
-                                      Text(
-                                        'RM ${partItems[index].total.toStringAsFixed(2)}',
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.w600,
-                                          color: Colors.teal.shade700,
-                                          fontSize: 15,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                  // Add Item Button
-                  Padding(
-                    padding: EdgeInsets.only(bottom: 16),
-                    child: ElevatedButton.icon(
-                      onPressed: () {
+                      inputFormatters: [
+                        FilteringTextInputFormatter.allow(
+                          RegExp(r'^\d*\.?\d{0,2}'),
+                        ),
+                      ],
+                      initialValue: discount.toString(), // Add this line
+                      onChanged: (value) {
                         setState(() {
-                          partItems.add(PartItem());
+                          discount = double.tryParse(value) ?? 0.0;
                         });
                       },
-                      icon: Icon(Icons.add_circle_outline),
-                      label: Text('Add New Item'),
+                      validator: (val) {
+                        final d = double.tryParse(val ?? '');
+                        if (d == null || d < 0) {
+                          return 'Enter a valid discount (>=0)';
+                        }
+                        if (isPercentDiscount && (d < 0 || d > 100)) {
+                          return 'Percent must be 0 - 100';
+                        }
+                        if (!isPercentDiscount) {
+                          final maxFixed = subtotal + tax;
+                          if (d > maxFixed) {
+                            return 'Cannot exceed RM ${maxFixed.toStringAsFixed(2)}';
+                          }
+                        }
+                        return null;
+                      },
+                    ),
+                  ),
+                  SizedBox(width: 16),
+                  ToggleButtons(
+                    children: [
+                      Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 12),
+                        child: Text('RM'),
+                      ),
+                      Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 12),
+                        child: Text('%'),
+                      ),
+                    ],
+                    onPressed: (index) {
+                      setState(() {
+                        isPercentDiscount = index == 1;
+                      });
+                    },
+                    isSelected: [!isPercentDiscount, isPercentDiscount],
+                  ),
+                ],
+              ),
+              SizedBox(height: 12),
+              Card(
+                color: Color.fromARGB(255, 243, 235, 207),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    children: [
+                      _SummaryRow(label: 'Subtotal', value: subtotal),
+                      _SummaryRow(label: 'GST (6%)', value: tax),
+                      _SummaryRow(label: 'Discount', value: -discountAmount),
+                      Divider(),
+                      _SummaryRow(label: 'Total', value: total, isBold: true),
+                    ],
+                  ),
+                ),
+              ),
+              SizedBox(height: 20),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      style: OutlinedButton.styleFrom(
+                        minimumSize: Size.fromHeight(48),
+                        textStyle: TextStyle(fontSize: 16),
+                        side: BorderSide(color: Colors.grey),
+                      ),
+                      child: Text('Cancel'),
+                    ),
+                  ),
+                  SizedBox(width: 16),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: _submit,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.teal.shade600,
-                        foregroundColor: Colors.white,
-                        padding: EdgeInsets.symmetric(
-                          horizontal: 32,
-                          vertical: 16,
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        elevation: 2,
+                        backgroundColor: Color(0xFFFFC700),
+                        foregroundColor: Color(0xFF22211F),
+                        minimumSize: Size.fromHeight(48),
                         textStyle: TextStyle(
+                          fontWeight: FontWeight.bold,
                           fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: 0.5,
                         ),
                       ),
+                      child: Text('Submit Invoice'),
                     ),
                   ),
                 ],
               ),
-            ),
-            SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: TextFormField(
-                    decoration: InputDecoration(
-                      labelText: 'Discount',
-                      border: OutlineInputBorder(),
-                    ),
-                    keyboardType: TextInputType.number,
-                    initialValue: discount.toString(), // Add this line
-                    onChanged: (value) {
-                      setState(() {
-                        discount = double.tryParse(value) ?? 0.0;
-                      });
-                    },
-                  ),
-                ),
-                SizedBox(width: 16),
-                ToggleButtons(
-                  children: [
-                    Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 12),
-                      child: Text('RM'),
-                    ),
-                    Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 12),
-                      child: Text('%'),
-                    ),
-                  ],
-                  onPressed: (index) {
-                    setState(() {
-                      isPercentDiscount = index == 1;
-                    });
-                  },
-                  isSelected: [!isPercentDiscount, isPercentDiscount],
-                ),
-              ],
-            ),
-            SizedBox(height: 12),
-            Card(
-              color: Color.fromARGB(255, 243, 235, 207),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  children: [
-                    _SummaryRow(label: 'Subtotal', value: subtotal),
-                    _SummaryRow(label: 'GST (6%)', value: tax),
-                    _SummaryRow(label: 'Discount', value: -discountAmount),
-                    Divider(),
-                    _SummaryRow(label: 'Total', value: total, isBold: true),
-                  ],
-                ),
-              ),
-            ),
-            SizedBox(height: 20),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    style: OutlinedButton.styleFrom(
-                      minimumSize: Size.fromHeight(48),
-                      textStyle: TextStyle(fontSize: 16),
-                      side: BorderSide(color: Colors.grey),
-                    ),
-                    child: Text('Cancel'),
-                  ),
-                ),
-                SizedBox(width: 16),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: _submit,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Color(0xFFFFC700),
-                      foregroundColor: Color(0xFF22211F),
-                      minimumSize: Size.fromHeight(48),
-                      textStyle: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                    ),
-                    child: Text('Submit Invoice'),
-                  ),
-                ),
-              ],
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

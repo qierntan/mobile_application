@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:mobile_application/screens/Customer/customer_details_screen.dart';
 import 'package:mobile_application/screens/Customer/customer_chat_history.dart';
+import 'package:mobile_application/model/customer.dart';
+import 'package:mobile_application/controller/customer_controller.dart';
 
 class CustomerListScreen extends StatefulWidget {
   const CustomerListScreen({Key? key}) : super(key: key);
@@ -12,7 +13,9 @@ class CustomerListScreen extends StatefulWidget {
 
 class _CustomerListScreenState extends State<CustomerListScreen> {
   final TextEditingController _searchController = TextEditingController();
+  final CustomerController _customerController = CustomerController();
   String _searchQuery = '';
+  String _sortOrder = 'A-Z';
 
   @override
   void dispose() {
@@ -20,9 +23,14 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
     super.dispose();
   }
 
+  void _toggleSortOrder() {
+    setState(() {
+      _sortOrder = _sortOrder == 'A-Z' ? 'Z-A' : 'A-Z';
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
-    final CollectionReference customers = FirebaseFirestore.instance.collection('Customer');
     final bgColor = Color(0xFFF5F3EF);
 
     return Scaffold(
@@ -53,10 +61,31 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
               ),
             ),
           ),
+          // Sort Button
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16.0),
+            child: Row(
+              children: [
+                TextButton.icon(
+                  onPressed: _toggleSortOrder,
+                  icon: const Icon(Icons.sort),
+                  label: Text('Sort: $_sortOrder'),
+                  style: TextButton.styleFrom(
+                    foregroundColor: Colors.black87,
+                    backgroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+                const Spacer(),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
           // Customer List
           Expanded(
-            child: StreamBuilder<QuerySnapshot>(
-              stream: customers.snapshots(),
+            child: StreamBuilder<List<Customer>>(
+              stream: _customerController.getCustomers(),
               builder: (context, snapshot) {
                 if (snapshot.hasError) {
                   return Center(child: Text('Something went wrong 😢'));
@@ -65,33 +94,27 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
                   return Center(child: CircularProgressIndicator());
                 }
 
-                final customerDocs = snapshot.data!.docs;
-                final filteredDocs = _searchQuery.isEmpty
-                    ? customerDocs
-                    : customerDocs.where((doc) {
-                        final data = doc.data() as Map<String, dynamic>;
-                        final name = (data['cusName'] ?? '').toString().toLowerCase();
-                        final email = (data['cusEmail'] ?? '').toString().toLowerCase();
-                        final phone = (data['cusPhone'] ?? '').toString().toLowerCase();
-                        return name.contains(_searchQuery) ||
-                            email.contains(_searchQuery) ||
-                            phone.contains(_searchQuery);
-                      }).toList();
+                final customers = snapshot.data ?? [];
+                final filteredCustomers = _customerController.getFilteredCustomers(
+                  customers, 
+                  _searchQuery, 
+                  _sortOrder
+                );
 
-                if (filteredDocs.isEmpty) {
+                if (filteredCustomers.isEmpty) {
                   return Center(child: Text('No customers found.'));
                 }
 
                 return ListView.builder(
                   padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
-                  itemCount: filteredDocs.length,
+                  itemCount: filteredCustomers.length,
                   itemBuilder: (context, index) {
-                    var data = filteredDocs[index].data() as Map<String, dynamic>;
-                    String customerId = filteredDocs[index].id;
-                    String customerName = data['cusName'] ?? 'No Name';
-                    String email = data['cusEmail'] ?? 'No Email';
-                    String phone = data['cusPhone'] ?? 'No Phone';
-                    String logoUrl = data['logoUrl'] ?? '';
+                    final customer = filteredCustomers[index];
+                    final customerId = customer.id!;
+                    final customerName = customer.cusName;
+                    final email = customer.cusEmail;
+                    final phone = customer.cusPhone;
+                    final logoUrl = customer.logoUrl ?? '';
 
                     return Center(
                       child: GestureDetector(

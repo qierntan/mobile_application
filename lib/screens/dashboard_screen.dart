@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:mobile_application/services/notification_service.dart';
+import 'package:mobile_application/services/remember_me_service.dart';
+import 'package:mobile_application/controller/dashboard_controller.dart';
 
 class DashboardScreen extends StatefulWidget {
   @override
@@ -6,6 +9,45 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
+  // Controller instance
+  final DashboardController _dashboardController = DashboardController();
+
+  // Store data for the dashboard
+  int totalCustomers = 0;
+  int totalMechanics = 0;
+  Map<String, dynamic> invoiceStats = {};
+  bool isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadDashboardData();
+  }
+
+  /// Load all dashboard data from Firebase
+  Future<void> _loadDashboardData() async {
+    try {
+      // Fetch data concurrently
+      final results = await Future.wait([
+        _dashboardController.getTotalCustomers(),
+        _dashboardController.getTotalMechanics(),
+        _dashboardController.getInvoiceStatistics(),
+      ]);
+
+      setState(() {
+        totalCustomers = results[0] as int;
+        totalMechanics = results[1] as int;
+        invoiceStats = results[2] as Map<String, dynamic>;
+        isLoading = false;
+      });
+    } catch (e) {
+      print('Error loading dashboard data: $e');
+      setState(() {
+        isLoading = false;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -32,7 +74,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         ),
                       ),
                       Text(
-                        'Arnaud Dresco',
+                        'Admin',
                         style: TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.w600,
@@ -90,11 +132,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           radius: 25,
                           backgroundImage: AssetImage('assets/profile.jpg'),
                           backgroundColor: Colors.grey[300],
-                          child: Icon(
-                            Icons.person,
-                            color: Colors.grey[600],
-                            size: 30,
-                          ),
                         ),
                       ),
                     ],
@@ -102,7 +139,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ],
               ),
               SizedBox(height: 30),
-              
+
               // Dashboard title
               Text(
                 'Dashboard',
@@ -113,14 +150,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
               ),
               SizedBox(height: 20),
-              
+
               // Statistics cards
               Row(
                 children: [
                   Expanded(
                     child: _buildStatCard(
                       title: 'Total\nCustomers',
-                      value: '50',
+                      value: isLoading ? '...' : '$totalCustomers',
                       color: Color(0xFF5A9FD4),
                     ),
                   ),
@@ -128,14 +165,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   Expanded(
                     child: _buildStatCard(
                       title: 'Total\nMechanics',
-                      value: '7',
+                      value: isLoading ? '...' : '$totalMechanics',
                       color: Color(0xFF5A9FD4),
                     ),
                   ),
                 ],
               ),
               SizedBox(height: 30),
-              
+
               // Sales section
               Expanded(
                 child: Container(
@@ -164,7 +201,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         ),
                       ),
                       SizedBox(height: 10),
-                      
+
                       // Legend
                       Row(
                         children: [
@@ -174,75 +211,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         ],
                       ),
                       SizedBox(height: 20),
-                      
+
                       // Chart
                       Expanded(
                         child: Center(
                           child: Container(
                             width: 200,
                             height: 200,
-                            child: Stack(
-                              alignment: Alignment.center,
-                              children: [
-                                // Donut chart
-                                SizedBox(
-                                  width: 200,
-                                  height: 200,
-                                  child: CircularProgressIndicator(
-                                    value: 0.6, // 60% paid
-                                    strokeWidth: 20,
-                                    backgroundColor: Color(0xFFFF7F7F),
-                                    valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF4CAF50)),
-                                  ),
-                                ),
-                                // Center text
-                                Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Text(
-                                      'Total Earning:',
-                                      style: TextStyle(
-                                        fontSize: 14,
-                                        color: Colors.grey[600],
-                                      ),
-                                    ),
-                                    Text(
-                                      'RM3,546.50',
-                                      style: TextStyle(
-                                        fontSize: 18,
-                                        fontWeight: FontWeight.bold,
-                                        color: Color(0xFF2E2E2E),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                // Percentage labels
-                                Positioned(
-                                  top: 30,
-                                  right: 30,
-                                  child: Text(
-                                    '60%',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                      color: Color(0xFF4CAF50),
-                                    ),
-                                  ),
-                                ),
-                                Positioned(
-                                  bottom: 30,
-                                  left: 30,
-                                  child: Text(
-                                    '40%',
-                                    style: TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold,
-                                      color: Color(0xFFFF7F7F),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
+                            child:
+                                isLoading
+                                    ? CircularProgressIndicator(
+                                      color: Color(0xFF5A9FD4),
+                                    )
+                                    : _buildPieChart(),
                           ),
                         ),
                       ),
@@ -256,8 +237,84 @@ class _DashboardScreenState extends State<DashboardScreen> {
       ),
     );
   }
-  
-  Widget _buildStatCard({required String title, required String value, required Color color}) {
+
+  /// Build pie chart widget with real data
+  Widget _buildPieChart() {
+    final double paidPercentage = invoiceStats['paidPercentage'] ?? 0.0;
+    final double unpaidPercentage = invoiceStats['unpaidPercentage'] ?? 0.0;
+    final double totalEarnings = invoiceStats['totalEarnings'] ?? 0.0;
+    final double paidValue = paidPercentage / 100;
+
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        // Donut chart
+        SizedBox(
+          width: 200,
+          height: 200,
+          child: CircularProgressIndicator(
+            value: paidValue,
+            strokeWidth: 20,
+            backgroundColor: Color(0xFFFF7F7F), // Unpaid color
+            valueColor: AlwaysStoppedAnimation<Color>(
+              Color(0xFF4CAF50), // Paid color
+            ),
+          ),
+        ),
+        // Center text
+        Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              'Total Earning:',
+              style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+            ),
+            Text(
+              _dashboardController.formatCurrency(totalEarnings),
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF2E2E2E),
+              ),
+            ),
+          ],
+        ),
+        // Percentage labels (only show if there's data)
+        if (paidPercentage > 0)
+          Positioned(
+            top: 30,
+            right: 30,
+            child: Text(
+              _dashboardController.formatPercentage(paidPercentage),
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF4CAF50),
+              ),
+            ),
+          ),
+        if (unpaidPercentage > 0)
+          Positioned(
+            bottom: 30,
+            left: 30,
+            child: Text(
+              _dashboardController.formatPercentage(unpaidPercentage),
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFFFF7F7F),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildStatCard({
+    required String title,
+    required String value,
+    required Color color,
+  }) {
     return Container(
       padding: EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -296,26 +353,17 @@ class _DashboardScreenState extends State<DashboardScreen> {
       ),
     );
   }
-  
+
   Widget _buildLegendItem(String label, Color color) {
     return Row(
       children: [
         Container(
           width: 12,
           height: 12,
-          decoration: BoxDecoration(
-            color: color,
-            shape: BoxShape.circle,
-          ),
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
         SizedBox(width: 8),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 14,
-            color: Colors.grey[600],
-          ),
-        ),
+        Text(label, style: TextStyle(fontSize: 14, color: Colors.grey[600])),
       ],
     );
   }
@@ -331,7 +379,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
           backgroundColor: Colors.transparent,
           child: Container(
             width: MediaQuery.of(context).size.width * 0.85,
-            constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.7),
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(context).size.height * 0.7,
+            ),
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(16),
@@ -378,7 +428,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
                 // Notification items
                 Container(
-                  constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.55),
+                  constraints: BoxConstraints(
+                    maxHeight: MediaQuery.of(context).size.height * 0.55,
+                  ),
                   child: ListView(
                     shrinkWrap: true,
                     children: [
@@ -406,6 +458,129 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         'View',
                         Icons.payment,
                       ),
+                      Divider(thickness: 2, color: Colors.grey.shade300),
+                      Padding(
+                        padding: EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Test Notifications',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                                color: Color(0xFF5A9FD4),
+                              ),
+                            ),
+                            SizedBox(height: 12),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: ElevatedButton.icon(
+                                    onPressed: () {
+                                      NotificationService().showServiceReminder(
+                                        vehicleId: 'ABC123',
+                                        message:
+                                            'Vehicle ABC123 is due for service in 3 days',
+                                      );
+                                      Navigator.pop(context);
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            'Service reminder notification sent!',
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                    icon: Icon(Icons.build, size: 16),
+                                    label: Text(
+                                      'Service',
+                                      style: TextStyle(fontSize: 12),
+                                    ),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Color(0xFF5A9FD4),
+                                      foregroundColor: Colors.white,
+                                      padding: EdgeInsets.symmetric(
+                                        vertical: 8,
+                                        horizontal: 12,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                SizedBox(width: 8),
+                                Expanded(
+                                  child: ElevatedButton.icon(
+                                    onPressed: () {
+                                      NotificationService()
+                                          .showPaymentNotification(
+                                            amount: '350.00',
+                                            customerId: 'CUST001',
+                                          );
+                                      Navigator.pop(context);
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            'Payment notification sent!',
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                    icon: Icon(Icons.payment, size: 16),
+                                    label: Text(
+                                      'Payment',
+                                      style: TextStyle(fontSize: 12),
+                                    ),
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.green,
+                                      foregroundColor: Colors.white,
+                                      padding: EdgeInsets.symmetric(
+                                        vertical: 8,
+                                        horizontal: 12,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: 8),
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton.icon(
+                                onPressed: () {
+                                  NotificationService().showNewReplyNotification(
+                                    message:
+                                        'Thank you for the excellent service!',
+                                    customerId: 'CUST002',
+                                  );
+                                  Navigator.pop(context);
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('Reply notification sent!'),
+                                    ),
+                                  );
+                                },
+                                icon: Icon(Icons.chat_bubble_outline, size: 16),
+                                label: Text(
+                                  'New Reply',
+                                  style: TextStyle(fontSize: 12),
+                                ),
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.orange,
+                                  foregroundColor: Colors.white,
+                                  padding: EdgeInsets.symmetric(
+                                    vertical: 8,
+                                    horizontal: 12,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -417,7 +592,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildNotificationItem(String title, String message, String action, IconData icon) {
+  Widget _buildNotificationItem(
+    String title,
+    String message,
+    String action,
+    IconData icon,
+  ) {
     return Container(
       padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -440,18 +620,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
               children: [
                 Text(
                   title,
-                  style: TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 14,
-                  ),
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                 ),
                 SizedBox(height: 4),
                 Text(
                   message,
-                  style: TextStyle(
-                    color: Colors.grey.shade600,
-                    fontSize: 12,
-                  ),
+                  style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -516,26 +690,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         radius: 40,
                         backgroundImage: AssetImage('assets/profile.jpg'),
                         backgroundColor: Colors.grey[300],
-                        child: Icon(
-                          Icons.person,
-                          color: Colors.grey[600],
-                          size: 40,
-                        ),
                       ),
                       SizedBox(height: 12),
                       Text(
-                        'Arnaud Dresco',
+                        'Admin',
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
                           color: Color(0xFF2E2E2E),
-                        ),
-                      ),
-                      Text(
-                        'arnaud04@gmail.com',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey[600],
                         ),
                       ),
                     ],
@@ -554,32 +716,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           _showEditProfileDialog(context);
                         },
                       ),
-                      _buildProfileOption(
-                        icon: Icons.settings_outlined,
-                        title: 'Settings',
-                        onTap: () {
-                          Navigator.pop(context);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('🚧 Settings screen is under development.')),
-                          );
-                        },
-                      ),
-                      _buildProfileOption(
-                        icon: Icons.help_outline,
-                        title: 'Help & Support',
-                        onTap: () {
-                          Navigator.pop(context);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('🚧 Help & Support is under development.')),
-                          );
-                        },
-                      ),
                       Divider(),
                       _buildProfileOption(
                         icon: Icons.logout,
                         title: 'Logout',
-                        onTap: () {
+                        onTap: () async {
                           Navigator.pop(context);
+                          // Clear saved credentials when logging out
+                          await RememberMeService.clearCredentials();
                           Navigator.pushReplacementNamed(context, '/login');
                         },
                         isDestructive: true,
@@ -619,7 +763,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   void _showEditProfileDialog(BuildContext context) {
-    final _nameController = TextEditingController(text: 'Arnaud Dresco');
+    final _nameController = TextEditingController(text: 'Admin');
     final _oldPasswordController = TextEditingController();
     final _newPasswordController = TextEditingController();
 
@@ -638,25 +782,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   radius: 50,
                   backgroundImage: AssetImage('assets/profile.jpg'),
                   backgroundColor: Colors.grey[300],
-                  child: Icon(
-                    Icons.person,
-                    color: Colors.grey[600],
-                    size: 50,
-                  ),
                 ),
                 SizedBox(height: 20),
                 Text(
-                  'Arnaud Dresco',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                Text(
-                  'arnaud04@gmail.com',
-                  style: TextStyle(
-                    color: Colors.grey[600],
-                  ),
+                  'Admin',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
                 ),
                 SizedBox(height: 20),
                 // Name field
@@ -707,7 +837,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     onPressed: () {
                       Navigator.pop(context);
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('Profile updated successfully!')),
+                        SnackBar(
+                          content: Text('Profile updated successfully!'),
+                        ),
                       );
                     },
                     style: ElevatedButton.styleFrom(
