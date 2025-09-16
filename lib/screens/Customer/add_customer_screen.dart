@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class AddCustomerScreen extends StatefulWidget {
-  const AddCustomerScreen({Key? key}) : super(key: key);
+  const AddCustomerScreen({super.key});
 
   @override
   State<AddCustomerScreen> createState() => _AddCustomerScreenState();
@@ -31,7 +31,7 @@ class _AddCustomerScreenState extends State<AddCustomerScreen> {
           }
         }
       }
-      final newId = 'C' + (maxId + 1).toString().padLeft(3, '0');
+      final newId = 'C${(maxId + 1).toString().padLeft(3, '0')}';
       await FirebaseFirestore.instance.collection('Customer').doc(newId).set({
         'cusName': _nameController.text.trim(),
         'cusEmail': _emailController.text.trim(),

@@ -7,7 +7,7 @@ import 'dart:io';
 
 class PartEditScreen extends StatefulWidget {
   final String partId;
-  const PartEditScreen({Key? key, required this.partId}) : super(key: key);
+  const PartEditScreen({super.key, required this.partId});
 
   @override
   State<PartEditScreen> createState() => _PartEditScreenState();
@@ -43,7 +43,7 @@ class _PartEditScreenState extends State<PartEditScreen> {
 
   Future<void> _load() async {
     final snap = await FirebaseFirestore.instance.collection('Part').doc(widget.partId).get();
-    final d = snap.data() as Map<String, dynamic>?;
+    final d = snap.data();
     if (d == null) return;
     _name.text = d['partName'] ?? '';
     _id.text = widget.partId;

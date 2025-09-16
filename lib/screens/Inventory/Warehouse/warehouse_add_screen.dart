@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class WarehouseAddScreen extends StatefulWidget {
-  const WarehouseAddScreen({Key? key}) : super(key: key);
+  const WarehouseAddScreen({super.key});
 
   @override
   State<WarehouseAddScreen> createState() => _WarehouseAddScreenState();

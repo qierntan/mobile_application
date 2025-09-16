@@ -25,7 +25,7 @@ class InvoiceController {
       // Search by customer name or vehicle number
       query = query
           .where('customerName', isGreaterThanOrEqualTo: searchQuery)
-          .where('customerName', isLessThan: searchQuery + 'z');
+          .where('customerName', isLessThan: '${searchQuery}z');
     }
 
     return query.snapshots();

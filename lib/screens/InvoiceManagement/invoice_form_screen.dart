@@ -168,7 +168,7 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
             .update(invoiceData);
       } else {
         // Generate a random 4-digit number
-        final random = new DateTime.now().millisecondsSinceEpoch % 10000;
+        final random = DateTime.now().millisecondsSinceEpoch % 10000;
         final formattedRandom = random.toString().padLeft(4, '0');
         final invoiceId = 'Inv$formattedRandom';
 
@@ -952,6 +952,12 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
                   ),
                   SizedBox(width: 16),
                   ToggleButtons(
+                    onPressed: (index) {
+                      setState(() {
+                        isPercentDiscount = index == 1;
+                      });
+                    },
+                    isSelected: [!isPercentDiscount, isPercentDiscount],
                     children: [
                       Padding(
                         padding: EdgeInsets.symmetric(horizontal: 12),
@@ -962,12 +968,6 @@ class _InvoiceFormScreenState extends State<InvoiceFormScreen> {
                         child: Text('%'),
                       ),
                     ],
-                    onPressed: (index) {
-                      setState(() {
-                        isPercentDiscount = index == 1;
-                      });
-                    },
-                    isSelected: [!isPercentDiscount, isPercentDiscount],
                   ),
                 ],
               ),
@@ -1071,7 +1071,7 @@ class _SummaryRow extends StatelessWidget {
                     : TextStyle(color: Color(0xFF22211F)),
           ),
           Text(
-            (value < 0 ? '- ' : '') + 'RM ${value.abs().toStringAsFixed(2)}',
+            '${value < 0 ? '- ' : ''}RM ${value.abs().toStringAsFixed(2)}',
             style:
                 isBold
                     ? TextStyle(

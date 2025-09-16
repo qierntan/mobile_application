@@ -399,7 +399,7 @@ class NotificationService {
       developer.log('Notification deleted from Firebase');
     } catch (e) {
       developer.log('Error deleting notification: $e');
-      throw e; // Re-throw to handle in UI
+      rethrow; // Re-throw to handle in UI
     }
   }
 
@@ -418,7 +418,7 @@ class NotificationService {
       developer.log('All notifications deleted from Firebase');
     } catch (e) {
       developer.log('Error deleting all notifications: $e');
-      throw e; // Re-throw to handle in UI
+      rethrow; // Re-throw to handle in UI
     }
   }
 

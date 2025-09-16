@@ -11,7 +11,7 @@ class CustomerChatHistory extends StatefulWidget {
   final String customerId;
   final String customerName;
 
-  const CustomerChatHistory({Key? key, required this.customerId, required this.customerName}) : super(key: key);
+  const CustomerChatHistory({super.key, required this.customerId, required this.customerName});
 
   @override
   State<CustomerChatHistory> createState() => _CustomerChatHistoryState();
@@ -72,7 +72,7 @@ class _CustomerChatHistoryState extends State<CustomerChatHistory> {
             const SizedBox(width: 10),
             Expanded(
               child: Text(
-                '${widget.customerName}',
+                widget.customerName,
                 overflow: TextOverflow.ellipsis,
               ),
             ),

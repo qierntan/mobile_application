@@ -98,6 +98,8 @@ class MainApp extends StatelessWidget {
 }
 
 class HomeNavigator extends StatefulWidget {
+  const HomeNavigator({super.key});
+
   @override
   _HomeNavigatorState createState() => _HomeNavigatorState();
 }
@@ -114,27 +116,27 @@ class _HomeNavigatorState extends State<HomeNavigator> {
 
   @override
   Widget build(BuildContext context) {
-    Widget _selectedScreen;
+    Widget selectedScreen;
 
     // Load screens based on navigation index
     switch (_currentIndex) {
       case 0:
-        _selectedScreen = DashboardScreen();
+        selectedScreen = DashboardScreen();
         break;
       case 1:
-        _selectedScreen = CustomerListScreen();
+        selectedScreen = CustomerListScreen();
         break;
       case 2:
-        _selectedScreen = AssignedJobsScreen();
+        selectedScreen = AssignedJobsScreen();
         break;
       case 3:
-        _selectedScreen = InventoryListScreen();
+        selectedScreen = InventoryListScreen();
         break;
       case 4:
-        _selectedScreen = InvoiceListScreen();
+        selectedScreen = InvoiceListScreen();
         break;
       default:
-        _selectedScreen = Center(
+        selectedScreen = Center(
           child: Text(
             '🚧 This screen is under development.',
             style: TextStyle(fontSize: 18),
@@ -164,7 +166,7 @@ class _HomeNavigatorState extends State<HomeNavigator> {
                 ]
                 : null,
       ),
-      body: _selectedScreen,
+      body: selectedScreen,
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _currentIndex,
         type: BottomNavigationBarType.fixed,

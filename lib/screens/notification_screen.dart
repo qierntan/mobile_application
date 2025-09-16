@@ -7,8 +7,7 @@ class NotificationScreen extends StatefulWidget {
   final String? notificationType;
   final Map<String, dynamic>? arguments;
 
-  const NotificationScreen({Key? key, this.notificationType, this.arguments})
-    : super(key: key);
+  const NotificationScreen({super.key, this.notificationType, this.arguments});
 
   @override
   _NotificationScreenState createState() => _NotificationScreenState();
@@ -18,7 +17,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
   List<Map<String, dynamic>> notifications = [];
   bool isLoading = true;
   bool isEditMode = false;
-  Set<String> selectedNotifications = Set<String>();
+  Set<String> selectedNotifications = <String>{};
 
   @override
   void initState() {
@@ -820,8 +819,7 @@ class _NotificationScreenState extends State<NotificationScreen> {
 class PaymentDetailsDialog extends StatefulWidget {
   final String paymentId;
 
-  const PaymentDetailsDialog({Key? key, required this.paymentId})
-    : super(key: key);
+  const PaymentDetailsDialog({super.key, required this.paymentId});
 
   @override
   _PaymentDetailsDialogState createState() => _PaymentDetailsDialogState();

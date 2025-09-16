@@ -5,7 +5,7 @@ import 'package:mobile_application/model/inventory_management/warehouse.dart';
 import 'package:mobile_application/controller/inventory_management/warehouse_controller.dart';
 
 class WarehouseListScreen extends StatefulWidget {
-  const WarehouseListScreen({Key? key}) : super(key: key);
+  const WarehouseListScreen({super.key});
 
   @override
   State<WarehouseListScreen> createState() => _WarehouseListScreenState();

@@ -6,7 +6,7 @@ import '../../main.dart';
 class VehicleDetailsScreen extends StatelessWidget {
   final String vehicleId;
 
-  const VehicleDetailsScreen({Key? key, required this.vehicleId}) : super(key: key);
+  const VehicleDetailsScreen({super.key, required this.vehicleId});
 
   @override
   Widget build(BuildContext context) {
