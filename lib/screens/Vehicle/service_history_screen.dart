@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../main.dart';
+import '../../controller/service_invoice_controller.dart';
 
 class ServiceHistoryScreen extends StatefulWidget {
   final String vehicleId;
@@ -180,18 +181,54 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
                       color: Colors.black87,
                     ),
                   ),
-                  Container(
-                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: Color(0xFFFF9800),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Text(
-                      'Invoice',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w600,
-                        fontSize: 12,
+                  GestureDetector(
+                    onTap: () async {
+                      final currentContext = context;
+                      try {
+                        // Show loading indicator
+                        showDialog(
+                          context: currentContext,
+                          barrierDismissible: false,
+                          builder: (BuildContext context) {
+                            return Center(
+                              child: CircularProgressIndicator(),
+                            );
+                          },
+                        );
+
+                        // Generate service invoice PDF
+                        await ServiceInvoiceController.generateServiceInvoice(data, widget.vehicleId);
+                        
+                        // Close loading indicator
+                        if (mounted) Navigator.of(currentContext).pop();
+                      } catch (e) {
+                        // Close loading indicator
+                        if (mounted) Navigator.of(currentContext).pop();
+                        
+                        // Show error message
+                        if (mounted) {
+                          ScaffoldMessenger.of(currentContext).showSnackBar(
+                            SnackBar(
+                              content: Text('Error generating invoice: $e'),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
+                        }
+                      }
+                    },
+                    child: Container(
+                      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: Color(0xFFFF9800),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Text(
+                        'Invoice',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 12,
+                        ),
                       ),
                     ),
                   ),
