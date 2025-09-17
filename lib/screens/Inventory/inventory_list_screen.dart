@@ -1,10 +1,11 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:mobile_application/model/inventory_management/part.dart';
 import 'package:mobile_application/controller/inventory_management/part_controller.dart';
 import 'package:mobile_application/screens/Inventory/Part/part_add_screen.dart';
 import 'Warehouse/warehouse_list_screen.dart';
 import 'Part/part_details_screen.dart';
+import 'package:mobile_application/screens/Inventory/Procurement/procurement_request_screen.dart';
+import 'package:mobile_application/screens/Inventory/Procurement/procurement_history_screen.dart';
 
 class InventoryListScreen extends StatefulWidget {
   const InventoryListScreen({super.key});
@@ -17,19 +18,14 @@ class _InventoryListScreenState extends State<InventoryListScreen> {
   final TextEditingController _searchController = TextEditingController();
   final PartController _partController = PartController();
   String _searchQuery = '';
-  String _sortOrder = 'A-Z'; // A-Z or Z-A
+  String _sortBy = 'Name'; 
+  bool _ascending = true;
   final GlobalKey _menuKey = GlobalKey();
 
   @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
-  }
-
-  void _toggleSortOrder() {
-    setState(() {
-      _sortOrder = _sortOrder == 'A-Z' ? 'Z-A' : 'A-Z';
-    });
   }
 
   @override
@@ -74,6 +70,14 @@ class _InventoryListScreenState extends State<InventoryListScreen> {
                     PopupMenuItem(value: 2, child: Text('> View Warehouse List')),
                   ],
                   onSelected: (value) async {
+                    if (value == 1) {
+                      await Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const ProcurementHistoryScreen()),
+                      );
+                      if (mounted) setState(() {});
+                    }
+
                     if (value == 2) {
                       await Navigator.push(
                         context,
@@ -90,16 +94,15 @@ class _InventoryListScreenState extends State<InventoryListScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
             child: Row(
               children: [
-                TextButton.icon(
-                  onPressed: _toggleSortOrder,
-                  icon: const Icon(Icons.sort),
-                  label: Text('Sort: $_sortOrder'),
-                  style: TextButton.styleFrom(
-                    foregroundColor: Colors.black87,
-                    backgroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  ),
+                DropdownButton<String>(
+                  value: _sortBy,
+                  items: ['Name', 'Stock'].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
+                  onChanged: (val) => setState(() => _sortBy = val!),
+                ),
+                const SizedBox(width: 12),
+                IconButton(
+                  icon: Icon(_ascending ? Icons.arrow_upward : Icons.arrow_downward),
+                  onPressed: () => setState(() => _ascending = !_ascending),
                 ),
                 const Spacer(),
                 IconButton(
@@ -134,11 +137,11 @@ class _InventoryListScreenState extends State<InventoryListScreen> {
                 }
 
                 final parts = snapshot.data ?? [];
-                final filtered = _partController.applyFiltersAndSort(
+                final filtered = _partController.applySearchAndSort(
                   parts,
                   _searchQuery,
-                  'name',
-                  ascending: _sortOrder == 'A-Z',
+                  _sortBy,
+                  ascending: _ascending,
                 );
 
                 if (filtered.isEmpty) {
@@ -189,7 +192,7 @@ class _InventoryListScreenState extends State<InventoryListScreen> {
                                       part.imageUrl!,
                                       width: 72,
                                       height: 72,
-                                      fit: BoxFit.cover,
+                                      fit: BoxFit.contain,
                                     )
                                   : Container(
                                       width: 72,
@@ -232,8 +235,16 @@ class _InventoryListScreenState extends State<InventoryListScreen> {
                                 const Icon(Icons.chevron_right, color: Colors.black26),
                                 const SizedBox(height: 16),
                                 TextButton(
-                                  onPressed: () {
-                                    // TODO: implement request action
+                                  onPressed: () async {
+                                    final request = await Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => ProcurementRequestScreen(partId: part.id!),
+                                      ),
+                                    );
+                                    if (request == true && context.mounted) {
+                                      Navigator.pop(context, true);
+                                    }
                                   },
                                   style: TextButton.styleFrom(
                                     backgroundColor: const Color(0xFFFFD54F),

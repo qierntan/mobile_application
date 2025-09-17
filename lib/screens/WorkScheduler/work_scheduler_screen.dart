@@ -5,6 +5,7 @@ import 'package:mobile_application/model/job.dart';
 import 'package:mobile_application/model/vehicle.dart';
 import 'job_details_screen.dart';
 import 'work_schedule_screen.dart';
+import 'edit_job_screen.dart'; // Added import for EditJobScreen
 
 // Custom scroll behavior to enable mouse wheel scrolling
 class CustomScrollBehavior extends MaterialScrollBehavior {
@@ -31,7 +32,7 @@ class WorkSchedulerScreen extends StatefulWidget {
 }
 
 class _WorkSchedulerScreenState extends State<WorkSchedulerScreen> {
-  String selectedFilter = 'Assigned'; // Default to showing assigned jobs
+  String selectedFilter = 'Unassigned'; // Default to showing unassigned jobs
   final TextEditingController _searchController = TextEditingController();
   bool showAssignmentMode = false; // Toggle between view mode and assignment mode
   String _searchQuery = '';
@@ -60,15 +61,23 @@ class _WorkSchedulerScreenState extends State<WorkSchedulerScreen> {
 
   Future<void> _assignJob(String jobId, String? mechanicName) async {
     try {
+      // Determine the status based on whether a mechanic is assigned
+      String status = (mechanicName == null || mechanicName.isEmpty) ? 'Unassigned' : 'Assigned';
+      
       await FirebaseFirestore.instance
           .collection('Jobs')
           .doc(jobId)
           .update({
         'mechanicName': mechanicName ?? '',
+        'status': status,
       });
       
+      String message = (mechanicName == null || mechanicName.isEmpty) 
+          ? 'Job unassigned successfully!' 
+          : 'Job assigned to $mechanicName successfully!';
+      
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Job assignment updated successfully!')),
+        SnackBar(content: Text(message)),
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -80,6 +89,8 @@ class _WorkSchedulerScreenState extends State<WorkSchedulerScreen> {
   JobStatus _parseJobStatus(String status) {
     // Handle both lowercase and proper case from Firestore
     switch (status.toLowerCase()) {
+      case 'unassigned':
+        return JobStatus.unassigned;
       case 'assigned':
         return JobStatus.assigned;
       case 'inprogress':
@@ -90,7 +101,7 @@ class _WorkSchedulerScreenState extends State<WorkSchedulerScreen> {
       case 'cancelled':
         return JobStatus.cancelled;
       default:
-        return JobStatus.assigned;
+        return JobStatus.unassigned; // Changed default to unassigned
     }
   }
 
@@ -177,6 +188,9 @@ class _WorkSchedulerScreenState extends State<WorkSchedulerScreen> {
     List<Job> statusFilteredJobs = jobs.where((job) {
       bool shouldInclude = false;
       switch (selectedFilter) {
+        case 'Unassigned':
+          shouldInclude = job.status == JobStatus.unassigned;
+          break;
         case 'Assigned':
           shouldInclude = job.status == JobStatus.assigned;
           break;
@@ -209,7 +223,7 @@ class _WorkSchedulerScreenState extends State<WorkSchedulerScreen> {
   void _updateMechanicWorkloads(List<Job> jobs) {
     for (var mechanic in mechanics) {
       mechanic.workload = jobs.where((job) => 
-        job.mechanic == mechanic.name && job.status == JobStatus.assigned
+        job.mechanic == mechanic.name && (job.status == JobStatus.assigned || job.status == JobStatus.unassigned)
       ).length;
     }
   }
@@ -306,7 +320,7 @@ class _WorkSchedulerScreenState extends State<WorkSchedulerScreen> {
                             selectedFilter = newValue!;
                           });
                         },
-                        items: <String>['Assigned', 'Completed']
+                        items: <String>['Unassigned', 'Assigned', 'Completed']
                             .map<DropdownMenuItem<String>>((String value) {
                           return DropdownMenuItem<String>(
                             value: value,
@@ -525,22 +539,37 @@ class JobCard extends StatelessWidget {
             children: [
               // Car image
               Container(
-                width: 60,
-                height: 60,
+                width: 64,
+                height: 48,
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(8),
                   color: _getCarColor(job.carModel),
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(8),
-                  child: Container(
-                    color: _getCarColor(job.carModel),
-                    child: Icon(
-                      Icons.directions_car,
-                      color: Colors.white,
-                      size: 30,
-                    ),
-                  ),
+                  child: (job.imageUrl.isNotEmpty)
+                      ? Image.network(
+                          job.imageUrl,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return Container(
+                              color: _getCarColor(job.carModel),
+                              child: Icon(
+                                Icons.directions_car,
+                                color: Colors.white,
+                                size: 26,
+                              ),
+                            );
+                          },
+                        )
+                      : Container(
+                          color: _getCarColor(job.carModel),
+                          child: Icon(
+                            Icons.directions_car,
+                            color: Colors.white,
+                            size: 26,
+                          ),
+                        ),
                 ),
               ),
               
@@ -594,7 +623,7 @@ class JobCard extends StatelessWidget {
               ),
               
               // Action buttons or assignment dropdown
-              if (showAssignmentMode && job.status == JobStatus.assigned)
+              if (showAssignmentMode && (job.status == JobStatus.assigned || job.status == JobStatus.unassigned))
                 // Assignment dropdown - prevent tap propagation
                 GestureDetector(
                   onTap: () {}, // Consume tap to prevent navigation
@@ -621,14 +650,23 @@ class JobCard extends StatelessWidget {
                     ),
                   ),
                 )
-              else if (!showAssignmentMode && job.status == JobStatus.assigned)
-                // Regular action buttons (edit/delete) - prevent tap propagation
+              else if (!showAssignmentMode && (job.status == JobStatus.assigned || job.status == JobStatus.unassigned))
+                // Regular action buttons (edit) - prevent tap propagation
                 GestureDetector(
                   onTap: () {}, // Consume tap to prevent navigation
                   child: IconButton(
                     icon: Icon(Icons.edit, color: Colors.grey[600]),
                     onPressed: () {
-                      // Edit job
+                      final names = mechanics.map((m) => m.name).toList();
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => EditJobScreen(
+                            jobId: job.id,
+                            mechanicNames: names,
+                          ),
+                        ),
+                      );
                     },
                     padding: EdgeInsets.zero,
                     constraints: BoxConstraints(),

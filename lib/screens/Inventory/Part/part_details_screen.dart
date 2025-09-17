@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:mobile_application/model/inventory_management/part.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:mobile_application/screens/Inventory/Part/part_edit_screen.dart';
-
+import 'package:mobile_application/screens/Inventory/Procurement/procurement_request_screen.dart';
 
 class PartDetailsScreen extends StatelessWidget {
   final Part part;
@@ -15,7 +15,7 @@ class PartDetailsScreen extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: const Color(0xFFF5F3EF),
         elevation: 0,
-        centerTitle: true,
+        centerTitle: false,
         title: const Text('Part Details', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back, color: Colors.black),
@@ -94,7 +94,7 @@ class PartDetailsScreen extends StatelessWidget {
                           part.imageUrl!,
                           width: 160,
                           height: 120,
-                          fit: BoxFit.cover,
+                          fit: BoxFit.contain,
                         )
                       : Container(
                           width: 160,
@@ -133,13 +133,21 @@ class PartDetailsScreen extends StatelessWidget {
 
           // Procurement Button
           Padding(
-            padding: const EdgeInsets.all(16.0),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
             child: SizedBox(
               width: double.infinity,
               height: 56,
               child: ElevatedButton(
-                onPressed: () {
-                  // TODO: implement request procurement
+                onPressed: () async {
+                  final request = await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => ProcurementRequestScreen(partId: part.id!),
+                    ),
+                  );
+                  if (request == true && context.mounted) {
+                    Navigator.pop(context, true);
+                  }
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFFFFD54F),

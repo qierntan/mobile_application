@@ -1,9 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:pdf/pdf.dart';
-import 'package:pdf/widgets.dart' as pw;
-import 'package:printing/printing.dart';
-import 'package:intl/intl.dart';
 import '../../main.dart';
 
 class ServiceHistoryScreen extends StatefulWidget {
@@ -16,214 +12,6 @@ class ServiceHistoryScreen extends StatefulWidget {
 }
 
 class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
-
-  Future<void> _generateServiceInvoicePDF(Map<String, dynamic> serviceData, String documentId) async {
-    try {
-      // Parse date from Firestore
-      DateTime date;
-      if (serviceData['date'] is Timestamp) {
-        final Timestamp timestamp = serviceData['date'] as Timestamp;
-        date = timestamp.toDate();
-      } else if (serviceData['date'] is String) {
-        date = DateTime.parse(serviceData['date'] as String);
-      } else {
-        date = DateTime.now();
-      }
-
-      final String serviceType = serviceData['serviceType'] ?? 'Service';
-      final int kilometers = (serviceData['kilometers'] ?? 0).toInt();
-      final double cost = (serviceData['cost'] ?? 0.0).toDouble();
-      final String description = serviceData['description'] ?? '';
-      final String formattedDate = DateFormat('dd MMM yyyy').format(date);
-
-      // Create PDF document
-      final pdf = pw.Document();
-
-      pdf.addPage(
-        pw.Page(
-          pageFormat: PdfPageFormat.a4,
-          build: (pw.Context context) {
-            return pw.Column(
-              crossAxisAlignment: pw.CrossAxisAlignment.start,
-              children: [
-                // Header
-                pw.Container(
-                  width: double.infinity,
-                  padding: const pw.EdgeInsets.all(20),
-                  decoration: pw.BoxDecoration(
-                    color: PdfColors.orange,
-                    borderRadius: pw.BorderRadius.circular(8),
-                  ),
-                  child: pw.Column(
-                    crossAxisAlignment: pw.CrossAxisAlignment.start,
-                    children: [
-                      pw.Text(
-                        'SERVICE INVOICE',
-                        style: pw.TextStyle(
-                          fontSize: 24,
-                          fontWeight: pw.FontWeight.bold,
-                          color: PdfColors.white,
-                        ),
-                      ),
-                      pw.SizedBox(height: 8),
-                      pw.Text(
-                        'Invoice #: INV-${documentId.substring(0, 8).toUpperCase()}',
-                        style: pw.TextStyle(
-                          fontSize: 14,
-                          color: PdfColors.white,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                
-                pw.SizedBox(height: 30),
-                
-                // Service Details
-                pw.Text(
-                  'Service Details',
-                  style: pw.TextStyle(
-                    fontSize: 18,
-                    fontWeight: pw.FontWeight.bold,
-                  ),
-                ),
-                
-                pw.SizedBox(height: 15),
-                
-                // Details Table
-                pw.Table(
-                  border: pw.TableBorder.all(color: PdfColors.grey300),
-                  children: [
-                    pw.TableRow(
-                      decoration: pw.BoxDecoration(color: PdfColors.grey100),
-                      children: [
-                        pw.Padding(
-                          padding: const pw.EdgeInsets.all(12),
-                          child: pw.Text('Service Date', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-                        ),
-                        pw.Padding(
-                          padding: const pw.EdgeInsets.all(12),
-                          child: pw.Text(formattedDate),
-                        ),
-                      ],
-                    ),
-                    pw.TableRow(
-                      children: [
-                        pw.Padding(
-                          padding: const pw.EdgeInsets.all(12),
-                          child: pw.Text('Service Type', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-                        ),
-                        pw.Padding(
-                          padding: const pw.EdgeInsets.all(12),
-                          child: pw.Text(serviceType),
-                        ),
-                      ],
-                    ),
-                    pw.TableRow(
-                      decoration: pw.BoxDecoration(color: PdfColors.grey100),
-                      children: [
-                        pw.Padding(
-                          padding: const pw.EdgeInsets.all(12),
-                          child: pw.Text('Vehicle Kilometers', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-                        ),
-                        pw.Padding(
-                          padding: const pw.EdgeInsets.all(12),
-                          child: pw.Text('${kilometers.toString()} km'),
-                        ),
-                      ],
-                    ),
-                    if (description.isNotEmpty)
-                      pw.TableRow(
-                        children: [
-                          pw.Padding(
-                            padding: const pw.EdgeInsets.all(12),
-                            child: pw.Text('Description', style: pw.TextStyle(fontWeight: pw.FontWeight.bold)),
-                          ),
-                          pw.Padding(
-                            padding: const pw.EdgeInsets.all(12),
-                            child: pw.Text(description),
-                          ),
-                        ],
-                      ),
-                  ],
-                ),
-                
-                pw.SizedBox(height: 30),
-                
-                // Cost Summary
-                pw.Container(
-                  width: double.infinity,
-                  padding: const pw.EdgeInsets.all(20),
-                  decoration: pw.BoxDecoration(
-                    border: pw.Border.all(color: PdfColors.grey300),
-                    borderRadius: pw.BorderRadius.circular(8),
-                  ),
-                  child: pw.Column(
-                    crossAxisAlignment: pw.CrossAxisAlignment.end,
-                    children: [
-                      pw.Text(
-                        'Total Cost',
-                        style: pw.TextStyle(
-                          fontSize: 16,
-                          fontWeight: pw.FontWeight.bold,
-                        ),
-                      ),
-                      pw.SizedBox(height: 8),
-                      pw.Text(
-                        'RM ${cost.toStringAsFixed(2)}',
-                        style: pw.TextStyle(
-                          fontSize: 24,
-                          fontWeight: pw.FontWeight.bold,
-                          color: PdfColors.orange,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                
-                pw.Spacer(),
-                
-                // Footer
-                pw.Container(
-                  width: double.infinity,
-                  padding: const pw.EdgeInsets.all(15),
-                  decoration: pw.BoxDecoration(
-                    color: PdfColors.grey100,
-                    borderRadius: pw.BorderRadius.circular(8),
-                  ),
-                  child: pw.Text(
-                    'Thank you for choosing our service!',
-                    style: pw.TextStyle(
-                      fontSize: 12,
-                      fontStyle: pw.FontStyle.italic,
-                    ),
-                    textAlign: pw.TextAlign.center,
-                  ),
-                ),
-              ],
-            );
-          },
-        ),
-      );
-
-      // Show print dialog
-      await Printing.layoutPdf(
-        onLayout: (PdfPageFormat format) async => pdf.save(),
-        name: 'Service_Invoice_${formattedDate.replaceAll(' ', '_')}.pdf',
-      );
-
-    } catch (e) {
-      // Show error message
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error generating PDF: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -392,21 +180,18 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
                       color: Colors.black87,
                     ),
                   ),
-                  GestureDetector(
-                    onTap: () => _generateServiceInvoicePDF(data, doc.id),
-                    child: Container(
-                      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: Color(0xFFFF9800),
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      child: Text(
-                        'Invoice',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w600,
-                          fontSize: 12,
-                        ),
+                  Container(
+                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Color(0xFFFF9800),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Text(
+                      'Invoice',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 12,
                       ),
                     ),
                   ),

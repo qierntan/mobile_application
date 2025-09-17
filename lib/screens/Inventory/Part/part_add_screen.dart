@@ -71,13 +71,22 @@ class _PartAddScreenState extends State<PartAddScreen> {
         'partWarehouse': _warehouse,
         'imageUrl': imageUrl,
       };
-      final doc = FirebaseFirestore.instance.collection('Part').doc(id.isEmpty ? null : id);
-      if (id.isEmpty) {
-        await FirebaseFirestore.instance.collection('Part').add(data);
-      } else {
-        await doc.set(data);
+      final docRef = FirebaseFirestore.instance.collection('Part').doc(id);
+      // Check if id already exists
+      final exists = await docRef.get();
+      if (exists.exists) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Part ID already exists! Please enter another.')),
+        );
+        setState(() => _save = false);
+        return;
       }
+      await docRef.set(data);
+
       if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Part added successfully!')),
+      );
       Navigator.pop(context, true);
     } catch (e) {
       if (!mounted) return;
@@ -105,8 +114,21 @@ class _PartAddScreenState extends State<PartAddScreen> {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            _field('Part Name', _name),
-            _field('Part ID', _id),
+            _field('Part Name', _name,
+              validator: (v) {
+                if (v == null || v.trim().isEmpty) return 'Required';
+                if (v.trim().length < 3) return 'Must be at least 3 characters';
+                return null;
+              },
+            ),
+
+            _field('Part ID', _id,
+              validator: (v) {
+                if (v == null || v.trim().isEmpty) return 'Required';
+                if (!RegExp(r'^[A-Za-z0-9]+$').hasMatch(v)) return 'Only letters and numbers allowed';
+                return null;
+              },
+            ),
 
              Padding(
               padding: const EdgeInsets.symmetric(vertical: 8.0),
@@ -121,7 +143,7 @@ class _PartAddScreenState extends State<PartAddScreen> {
                         borderRadius: BorderRadius.circular(8),
                         child: _imageFile != null
                             ? Image.file(_imageFile!,
-                                width: 100, height: 80, fit: BoxFit.cover)
+                                width: 100, height: 80, fit: BoxFit.contain)
                             : Container(
                                 width: 100,
                                 height: 80,
@@ -139,11 +161,33 @@ class _PartAddScreenState extends State<PartAddScreen> {
                 ],
               ),
             ),
-            const SizedBox(height: 16),
 
-            _field('Current Quantity', _qty),
-            _field('Minimum Threshold', _threshold),
-            _field('Price Per Unit (RM)', _price),
+            _field('Current Quantity', _qty, keyboardType: TextInputType.number,
+              validator: (v) {
+                if (v == null || v.isEmpty) return 'Required';
+                final num = int.tryParse(v);
+                if (num == null || num < 0) return 'Enter a valid non-negative number';
+                return null;
+              },
+            ),
+
+            _field('Minimum Threshold', _threshold, keyboardType: TextInputType.number,
+              validator: (v) {
+                if (v == null || v.isEmpty) return 'Required';
+                final num = int.tryParse(v);
+                if (num == null || num < 0) return 'Enter a valid non-negative number';
+                return null;
+              },
+            ),
+
+            _field('Price Per Unit (RM)', _price, keyboardType: TextInputType.numberWithOptions(decimal: true),
+              validator: (v) {
+                if (v == null || v.isEmpty) return 'Required';
+                final num = double.tryParse(v);
+                if (num == null || num < 0) return 'Enter a valid price';
+                return null;
+              },
+            ),
 
             // Warehouse dropdown
             Padding(
@@ -180,6 +224,7 @@ class _PartAddScreenState extends State<PartAddScreen> {
                 },
               ),
             ),
+            
             const SizedBox(height: 12),
             Center(
               child: ElevatedButton(
@@ -201,13 +246,18 @@ class _PartAddScreenState extends State<PartAddScreen> {
     );
   }
 
-  Widget _field(String label, TextEditingController c, {TextInputType? keyboardType}) {
+  Widget _field(
+    String label, 
+    TextEditingController c, {
+    TextInputType? keyboardType, 
+    String? Function(String?)? validator,
+  }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: TextFormField(
         controller: c,
         keyboardType: keyboardType,
-        validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
+        validator: validator ?? (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
         decoration: InputDecoration(
           labelText: label,
           filled: true,
