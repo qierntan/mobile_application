@@ -3,9 +3,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 class EditJobScreen extends StatefulWidget {
   final String jobId;
-  final List<String> mechanicNames;
 
-  const EditJobScreen({super.key, required this.jobId, required this.mechanicNames});
+  const EditJobScreen({super.key, required this.jobId});
 
   @override
   State<EditJobScreen> createState() => _EditJobScreenState();
@@ -19,8 +18,9 @@ class _EditJobScreenState extends State<EditJobScreen> {
   String _year = '';
   String _vin = '';
   String _serviceType = '';
-  String? _selectedMechanic; // null means Unassigned
+  String? _selectedMechanicId; // null means Unassigned
   DateTime? _selectedDateTime;
+  List<Map<String, String>> _mechanics = const [];
 
   @override
   void initState() {
@@ -51,13 +51,28 @@ class _EditJobScreenState extends State<EditJobScreen> {
         try {
           final vehicleDoc = await FirebaseFirestore.instance.collection('Vehicle').doc(vehicleId).get();
           if (vehicleDoc.exists) {
-            final v = vehicleDoc.data() as Map<String, dynamic>;
+            final v = vehicleDoc.data()!;
             plate = (v['carPlateNumber'] ?? '').toString();
             year = (v['year'] ?? '').toString();
             vin = (v['vin'] ?? '').toString();
           }
         } catch (_) {}
       }
+
+      // load mechanics list from Mechanics collection
+      List<Map<String, String>> mechanics = [];
+      try {
+        final mechSnap = await FirebaseFirestore.instance
+            .collection('Mechanics')
+            .get();
+        mechanics = mechSnap.docs.map((d) {
+          final m = d.data();
+          return {
+            'mechanicId': (m['mechanicId'] ?? '').toString(),
+            'name': (m['name'] ?? '').toString(),
+          };
+        }).where((e) => e['mechanicId']!.isNotEmpty && e['name']!.isNotEmpty).toList();
+      } catch (_) {}
 
       final Timestamp? ts = jobData['time'] as Timestamp?;
       final DateTime? dt = ts?.toDate();
@@ -67,8 +82,19 @@ class _EditJobScreenState extends State<EditJobScreen> {
         _year = year;
         _vin = vin;
         _serviceType = (jobData['serviceType'] ?? '').toString();
-        final mech = (jobData['mechanicName'] ?? '').toString().trim();
-        _selectedMechanic = mech.isEmpty ? null : mech;
+        _mechanics = mechanics;
+        // Prefer mechanicId; fallback: map mechanicName to id if present
+        final jobMechanicId = (jobData['mechanicId'] ?? '').toString().trim();
+        if (jobMechanicId.isNotEmpty) {
+          _selectedMechanicId = jobMechanicId;
+        } else {
+          final mechName = (jobData['mechanicName'] ?? '').toString().trim();
+          final match = _mechanics.firstWhere(
+            (m) => m['name'] == mechName,
+            orElse: () => const {'mechanicId': '', 'name': ''},
+          );
+          _selectedMechanicId = (match['mechanicId'] ?? '').isEmpty ? null : match['mechanicId'];
+        }
         _selectedDateTime = dt;
         _loading = false;
       });
@@ -85,8 +111,8 @@ class _EditJobScreenState extends State<EditJobScreen> {
     if (!_formKey.currentState!.validate()) return;
     try {
       await FirebaseFirestore.instance.collection('Jobs').doc(widget.jobId).update({
-        'mechanicName': _selectedMechanic ?? '',
-        'status': (_selectedMechanic == null || _selectedMechanic!.isEmpty) ? 'Unassigned' : 'Assigned',
+        'mechanicId': _selectedMechanicId ?? '',
+        'status': (_selectedMechanicId == null || _selectedMechanicId!.isEmpty) ? 'Unassigned' : 'Assigned',
       });
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -152,15 +178,15 @@ class _EditJobScreenState extends State<EditJobScreen> {
                         ),
                         child: DropdownButtonHideUnderline(
                           child: DropdownButton<String?>(
-                            value: _selectedMechanic,
+                            value: _selectedMechanicId,
                             isExpanded: true,
                             items: [
                               const DropdownMenuItem<String?>(value: null, child: Text('Unassigned', style: TextStyle(fontWeight: FontWeight.normal))),
-                              ...widget.mechanicNames.map(
-                                (name) => DropdownMenuItem<String?>(value: name, child: Text(name, style: const TextStyle(fontWeight: FontWeight.normal))),
+                              ..._mechanics.map(
+                                (m) => DropdownMenuItem<String?>(value: m['mechanicId'], child: Text(m['name']!, style: const TextStyle(fontWeight: FontWeight.normal))),
                               ),
                             ],
-                            onChanged: (val) => setState(() => _selectedMechanic = val),
+                            onChanged: (val) => setState(() => _selectedMechanicId = val),
                           ),
                         ),
                       ),

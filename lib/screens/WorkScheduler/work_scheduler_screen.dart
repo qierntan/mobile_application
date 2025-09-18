@@ -167,13 +167,35 @@ class _WorkSchedulerScreenState extends State<WorkSchedulerScreen> {
         plateNumber = 'No Plate';
       }
       
+      // Resolve mechanic name from mechanicId
+      String mechanicName = '';
+      final mechanicId = (data['mechanicId'] ?? '').toString();
+      if (mechanicId.isNotEmpty) {
+        try {
+          final mechanicQuery = await FirebaseFirestore.instance
+              .collection('Mechanics')
+              .where('mechanicId', isEqualTo: mechanicId)
+              .limit(1)
+              .get();
+
+          if (mechanicQuery.docs.isNotEmpty) {
+            final mechData = mechanicQuery.docs.first.data();
+            mechanicName = (mechData['name'] ?? '').toString();
+          } else {
+            print('⚠️  WARNING: Mechanic with mechanicId $mechanicId not found for job ${doc.id}');
+          }
+        } catch (e) {
+          print('❌ ERROR: Failed to load mechanic $mechanicId for job ${doc.id}: $e');
+        }
+      }
+
       print('=== END DEBUG ===');
       
       jobs.add(Job(
         id: doc.id,
         carModel: carModel,
         plateNumber: plateNumber,
-        mechanic: data['mechanicName'] ?? '',
+        mechanic: mechanicName,
         serviceType: data['serviceType'] ?? '',
         scheduledTime: actualTime,
         imageUrl: imageUrl,
@@ -657,13 +679,11 @@ class JobCard extends StatelessWidget {
                   child: IconButton(
                     icon: Icon(Icons.edit, color: Colors.grey[600]),
                     onPressed: () {
-                      final names = mechanics.map((m) => m.name).toList();
                       Navigator.push(
                         context,
                         MaterialPageRoute(
                           builder: (context) => EditJobScreen(
                             jobId: job.id,
-                            mechanicNames: names,
                           ),
                         ),
                       );
