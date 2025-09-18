@@ -3,6 +3,7 @@ import 'package:flutter/gestures.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:mobile_application/model/job.dart';
 import 'package:mobile_application/model/vehicle.dart';
+import 'package:mobile_application/services/job_conflict_service.dart';
 import 'job_details_screen.dart';
 import 'work_schedule_screen.dart';
 import 'edit_job_screen.dart'; // Added import for EditJobScreen
@@ -61,14 +62,64 @@ class _WorkSchedulerScreenState extends State<WorkSchedulerScreen> {
 
   Future<void> _assignJob(String jobId, String? mechanicName) async {
     try {
+      // If assigning a mechanic, check for time conflicts first
+      if (mechanicName != null && mechanicName.isNotEmpty) {
+        // Get the job details first to check for time conflicts
+        final jobDoc = await FirebaseFirestore.instance
+            .collection('Jobs')
+            .doc(jobId)
+            .get();
+        
+        if (!jobDoc.exists) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Job not found')),
+          );
+          return;
+        }
+        
+        final jobData = jobDoc.data()!;
+        final jobTime = jobData['time'];
+        
+        if (jobTime != null) {
+          // Get mechanicId from mechanicName
+          String? mechanicId = await JobConflictService.getMechanicIdFromName(mechanicName);
+          
+          if (mechanicId != null) {
+            // Check for time conflicts
+            final hasConflict = await JobConflictService.checkTimeConflict(
+              currentJobId: jobId,
+              mechanicId: mechanicId,
+              jobTime: jobTime,
+            );
+            
+            if (hasConflict) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Error: This mechanic already has a job at this time slot'),
+                  backgroundColor: Colors.red,
+                ),
+              );
+              return;
+            }
+          }
+        }
+      }
+      
       // Determine the status based on whether a mechanic is assigned
       String status = (mechanicName == null || mechanicName.isEmpty) ? 'Unassigned' : 'Assigned';
+      
+      // Get mechanicId if assigning a mechanic
+      String? mechanicId;
+      if (mechanicName != null && mechanicName.isNotEmpty) {
+        mechanicId = await JobConflictService.getMechanicIdFromName(mechanicName);
+      }
       
       await FirebaseFirestore.instance
           .collection('Jobs')
           .doc(jobId)
           .update({
         'mechanicName': mechanicName ?? '',
+        'mechanicId': mechanicId ?? '',
         'status': status,
       });
       
@@ -85,6 +136,7 @@ class _WorkSchedulerScreenState extends State<WorkSchedulerScreen> {
       );
     }
   }
+
 
   JobStatus _parseJobStatus(String status) {
     // Handle both lowercase and proper case from Firestore
