@@ -8,14 +8,16 @@ class CustomerListScreen extends StatefulWidget {
   const CustomerListScreen({super.key});
 
   @override
-  _CustomerListScreenState createState() => _CustomerListScreenState();
+  CustomerListScreenState createState() => CustomerListScreenState();
 }
 
-class _CustomerListScreenState extends State<CustomerListScreen> {
+class CustomerListScreenState extends State<CustomerListScreen> {
   final TextEditingController _searchController = TextEditingController();
   final CustomerController _customerController = CustomerController();
   String _searchQuery = '';
   String _sortOrder = 'A-Z';
+  List<Customer> _filteredCustomers = [];
+  bool _isSearching = false;
 
   @override
   void dispose() {
@@ -23,10 +25,54 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
     super.dispose();
   }
 
+  Future<void> _performEnhancedSearch(List<Customer> allCustomers) async {
+    if (_searchQuery.isEmpty) {
+      setState(() {
+        _filteredCustomers = _customerController.sortCustomers(allCustomers, _sortOrder);
+        _isSearching = false;
+      });
+      return;
+    }
+
+    setState(() {
+      _isSearching = true;
+    });
+
+    try {
+      final filtered = await _customerController.getFilteredCustomersEnhanced(
+        allCustomers, 
+        _searchQuery, 
+        _sortOrder
+      );
+      setState(() {
+        _filteredCustomers = filtered;
+        _isSearching = false;
+      });
+    } catch (e) {
+      // Fallback to regular search if enhanced search fails
+      final filtered = _customerController.getFilteredCustomers(
+        allCustomers, 
+        _searchQuery, 
+        _sortOrder
+      );
+      setState(() {
+        _filteredCustomers = filtered;
+        _isSearching = false;
+      });
+    }
+  }
+
   void _toggleSortOrder() {
     setState(() {
       _sortOrder = _sortOrder == 'A-Z' ? 'Z-A' : 'A-Z';
     });
+    // Re-trigger search with new sort order
+    if (_filteredCustomers.isNotEmpty) {
+      final sortedCustomers = _customerController.sortCustomers(_filteredCustomers, _sortOrder);
+      setState(() {
+        _filteredCustomers = sortedCustomers;
+      });
+    }
   }
 
   @override
@@ -46,17 +92,21 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
               child: TextField(
                 controller: _searchController,
                 decoration: InputDecoration(
-                  hintText: 'Search',
+                  hintText: 'Search by name, email, phone, or car plate',
                   prefixIcon: Icon(Icons.search),
                   border: InputBorder.none,
                   contentPadding: EdgeInsets.symmetric(vertical: 14),
                   filled: true,
                   fillColor: Colors.white,
                 ),
-                onChanged: (value) {
+                onChanged: (value) async {
                   setState(() {
-                    _searchQuery = value.trim().toLowerCase();
+                    _searchQuery = value.trim();
                   });
+                  
+                  // Get current customers from the stream
+                  final customers = await _customerController.getCustomers().first;
+                  _performEnhancedSearch(customers);
                 },
               ),
             ),
@@ -95,21 +145,24 @@ class _CustomerListScreenState extends State<CustomerListScreen> {
                 }
 
                 final customers = snapshot.data ?? [];
-                final filteredCustomers = _customerController.getFilteredCustomers(
-                  customers, 
-                  _searchQuery, 
-                  _sortOrder
-                );
+                
+                // Show loading indicator while searching
+                if (_isSearching) {
+                  return Center(child: CircularProgressIndicator());
+                }
 
-                if (filteredCustomers.isEmpty) {
+                // Use filtered customers if search is active, otherwise show all customers
+                final displayCustomers = _searchQuery.isNotEmpty ? _filteredCustomers : customers;
+
+                if (displayCustomers.isEmpty && _searchQuery.isNotEmpty) {
                   return Center(child: Text('No customers found.'));
                 }
 
                 return ListView.builder(
                   padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
-                  itemCount: filteredCustomers.length,
+                  itemCount: displayCustomers.length,
                   itemBuilder: (context, index) {
-                    final customer = filteredCustomers[index];
+                    final customer = displayCustomers[index];
                     final customerId = customer.id!;
                     final customerName = customer.cusName;
                     final email = customer.cusEmail;
