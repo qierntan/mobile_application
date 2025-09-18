@@ -22,6 +22,11 @@ class _CustomerChatHistoryState extends State<CustomerChatHistory> {
   bool _isSending = false;
   final AudioRecorder _recorder = AudioRecorder();
   bool _isRecording = false;
+  
+  // Search and filter state
+  String _searchQuery = '';
+  DateTime? _filterDate;
+  bool _showSearchBar = false;
 
   Query<Map<String, dynamic>> _chatHistoryQuery(String customerId) {
     // Structure in screenshot: ChatHistory (top-level), one doc per message with fields
@@ -79,10 +84,24 @@ class _CustomerChatHistoryState extends State<CustomerChatHistory> {
           ],
         ),
         backgroundColor: Color(0xFFF5F3EF),
-        
+        actions: [
+          IconButton(
+            icon: Icon(_showSearchBar ? Icons.close : Icons.search),
+            onPressed: () {
+              setState(() {
+                _showSearchBar = !_showSearchBar;
+                if (!_showSearchBar) {
+                  _searchQuery = '';
+                  _filterDate = null;
+                }
+              });
+            },
+          ),
+        ],
       ),
       body: Column(
         children: [
+          if (_showSearchBar) _buildSearchBar(),
           Expanded(
             child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
         stream: _chatHistoryQuery(widget.customerId).snapshots(),
@@ -108,11 +127,34 @@ class _CustomerChatHistoryState extends State<CustomerChatHistory> {
                 return da.compareTo(db);
               });
 
+              // Apply search and date filters
+              final filteredDocs = sortedDocs.where((doc) {
+                final data = doc.data();
+                final messageText = (data['messageText'] ?? '').toString().toLowerCase();
+                final timestamp = data['timestamp'];
+                
+                // Search filter
+                if (_searchQuery.isNotEmpty && !messageText.contains(_searchQuery.toLowerCase())) {
+                  return false;
+                }
+                
+                // Date filter
+                if (_filterDate != null && timestamp is Timestamp) {
+                  final messageDate = timestamp.toDate();
+                  final filterDate = _filterDate!;
+                  return messageDate.year == filterDate.year &&
+                         messageDate.month == filterDate.month &&
+                         messageDate.day == filterDate.day;
+                }
+                
+                return true;
+              }).toList();
+
               return ListView.builder(
                 // not reversed; messages start from the top like a normal chat transcript
-                itemCount: sortedDocs.length,
+                itemCount: filteredDocs.length,
                 itemBuilder: (context, index) {
-                  final data = sortedDocs[index].data();
+                  final data = filteredDocs[index].data();
                   final messageType = (data['messageType'] ?? '').toString();
                   final text = (data['messageText'] ?? '').toString();
                   final audioUrl = (data['audioUrl'] ?? '').toString();
@@ -134,7 +176,7 @@ class _CustomerChatHistoryState extends State<CustomerChatHistory> {
                   // Date header (Today/Yesterday/Date)
                   String? dateHeader;
                   if (sentAt != null) {
-                    final prevTs = index > 0 ? sortedDocs[index - 1].data()['timestamp'] : null;
+                    final prevTs = index > 0 ? filteredDocs[index - 1].data()['timestamp'] : null;
                     DateTime? prevAt;
                     if (prevTs is Timestamp) {
                       prevAt = DateTime.fromMicrosecondsSinceEpoch(
@@ -359,6 +401,78 @@ class _CustomerChatHistoryState extends State<CustomerChatHistory> {
     }
   }
 
+
+  Widget _buildSearchBar() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      color: Colors.white,
+      child: Column(
+        children: [
+          TextField(
+            decoration: InputDecoration(
+              hintText: 'Search messages...',
+              prefixIcon: const Icon(Icons.search),
+              suffixIcon: _searchQuery.isNotEmpty
+                  ? IconButton(
+                      icon: const Icon(Icons.clear),
+                      onPressed: () {
+                        setState(() => _searchQuery = '');
+                      },
+                    )
+                  : null,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide(color: Colors.grey.shade300),
+              ),
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            ),
+            onChanged: (value) {
+              setState(() => _searchQuery = value);
+            },
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: _selectDate,
+                  icon: const Icon(Icons.calendar_today, size: 18),
+                  label: Text(_filterDate != null 
+                      ? '${_filterDate!.day}/${_filterDate!.month}/${_filterDate!.year}'
+                      : 'Filter by date'),
+                  style: OutlinedButton.styleFrom(
+                    side: BorderSide(color: Colors.grey.shade300),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                ),
+              ),
+              if (_filterDate != null) ...[
+                const SizedBox(width: 8),
+                TextButton(
+                  onPressed: () {
+                    setState(() => _filterDate = null);
+                  },
+                  child: const Text('Clear date'),
+                ),
+              ],
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _selectDate() async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: _filterDate ?? DateTime.now(),
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now(),
+    );
+    if (picked != null) {
+      setState(() => _filterDate = picked);
+    }
+  }
 
   @override
   void dispose() {
