@@ -79,7 +79,54 @@ class CustomerController {
   }
 
 
-  // Search customers by name, email, or phone
+  // Search customers by name, email, phone, or vehicle number plate
+  Future<List<Customer>> searchCustomersEnhanced(List<Customer> customers, String query) async {
+    if (query.isEmpty) return customers;
+    
+    final lowercaseQuery = query.toLowerCase();
+    
+    // First, search by customer details (name, email, phone)
+    final customerMatches = customers.where((customer) {
+      return customer.cusName.toLowerCase().contains(lowercaseQuery) ||
+             customer.cusEmail.toLowerCase().contains(lowercaseQuery) ||
+             customer.cusPhone.toLowerCase().contains(lowercaseQuery);
+    }).toList();
+    
+    // Then, search by vehicle number plate
+    try {
+      final vehicleQuery = await _firestore
+          .collection('Vehicle')
+          .where('carPlateNumber', isGreaterThanOrEqualTo: query.toUpperCase())
+          .where('carPlateNumber', isLessThanOrEqualTo: '${query.toUpperCase()}\uf8ff')
+          .get();
+      
+      final vehicleCustomerIds = vehicleQuery.docs
+          .map((doc) => doc.data()['customerId'] as String?)
+          .where((id) => id != null)
+          .cast<String>()
+          .toSet();
+      
+      final vehicleMatches = customers.where((customer) => 
+          vehicleCustomerIds.contains(customer.id)).toList();
+      
+      // Combine results and remove duplicates
+      final allMatches = <String, Customer>{};
+      for (final customer in customerMatches) {
+        allMatches[customer.id!] = customer;
+      }
+      for (final customer in vehicleMatches) {
+        allMatches[customer.id!] = customer;
+      }
+      
+      return allMatches.values.toList();
+    } catch (e) {
+      // Error searching vehicles: $e
+      // If vehicle search fails, return customer matches only
+      return customerMatches;
+    }
+  }
+
+  // Search customers by name, email, or phone (legacy method for backward compatibility)
   List<Customer> searchCustomers(List<Customer> customers, String query) {
     if (query.isEmpty) return customers;
     
@@ -104,7 +151,13 @@ class CustomerController {
     return sortedCustomers;
   }
 
-  // Get customers with search and sort applied
+  // Get customers with enhanced search and sort applied (includes vehicle plate search)
+  Future<List<Customer>> getFilteredCustomersEnhanced(List<Customer> customers, String searchQuery, String sortOrder) async {
+    final searched = await searchCustomersEnhanced(customers, searchQuery);
+    return sortCustomers(searched, sortOrder);
+  }
+
+  // Get customers with search and sort applied (legacy method for backward compatibility)
   List<Customer> getFilteredCustomers(List<Customer> customers, String searchQuery, String sortOrder) {
     final searched = searchCustomers(customers, searchQuery);
     return sortCustomers(searched, sortOrder);
