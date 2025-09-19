@@ -29,7 +29,8 @@ extension ProcurementStatusLabel on ProcurementStatus {
 }
 
 class Procurement {
-  final String? id;           
+  final String? id;
+  final String partId;           
   final String partName;        
   final int orderQty;
   final String warehouse;
@@ -41,6 +42,7 @@ class Procurement {
 
   Procurement({
     this.id,
+    required this.partId,
     required this.partName,
     required this.orderQty,
     required this.warehouse,
@@ -54,6 +56,7 @@ class Procurement {
   factory Procurement.fromMap(Map<String, dynamic> map, String documentId) {
     return Procurement(
       id: documentId,
+      partId: map['partId'] ?? '',
       partName: map['partName'] ?? '',
       orderQty: map['orderQty'] ?? 0,
       warehouse: map['warehouse'] ?? '',
@@ -73,6 +76,7 @@ class Procurement {
 
   Map<String, dynamic> toMap() {
     return {
+      'partId': partId,
       'partName': partName,
       'orderQty': orderQty,
       'warehouse': warehouse,
@@ -86,6 +90,7 @@ class Procurement {
 
   Procurement copyWith({
     String? id,
+    String? partId,
     String? partName,
     int? orderQty,
     String? warehouse,
@@ -97,6 +102,7 @@ class Procurement {
   }) {
     return Procurement(
       id: id ?? this.id,
+      partId: partId ?? this.partId,
       partName: partName ?? this.partName,
       orderQty: orderQty ?? this.orderQty,
       warehouse: warehouse ?? this.warehouse,
@@ -110,6 +116,6 @@ class Procurement {
 
   @override
   String toString() {
-    return 'Procurement(id: $id, partName: $partName, qty: $orderQty, status: ${status.value})';
+    return 'Procurement(id: $id, partId: $partId, partName: $partName, qty: $orderQty, status: ${status.value})';
   }
 }

@@ -111,40 +111,53 @@ class PartController {
     }).toList();
   }
 
-  // Sort parts by name or stock levels
-  List<Part> sortParts(List<Part> parts, String sortBy, {bool ascending = true}) {
-    final sortedParts = List<Part>.from(parts);
-    sortedParts.sort((a, b) {
-      if (sortBy == 'name') {
-        final nameA = a.partName.toLowerCase();
-        final nameB = b.partName.toLowerCase();
-        return ascending ? nameA.compareTo(nameB) : nameB.compareTo(nameA);
-      } else if (sortBy == 'stock') {
+  // Sort parts by name or quantity or stock status
+  List<Part> sortParts(List<Part> parts, String sortBy, {bool ascending = true, String? statusFilter}) {
+    var sorted = List<Part>.from(parts);
+    
+    if (sortBy == 'Status' && statusFilter != null) {
+      sorted = sorted.where((p) {
+        final qty = p.currentQty ?? 0;
+        final threshold = p.partThreshold ?? 0;
+        final isLow = qty <= threshold;
+        return statusFilter == 'Low' ? isLow : !isLow;
+      }).toList();
+
+      sorted.sort((a, b) {
         final stockA = a.currentQty ?? 0;
         final stockB = b.currentQty ?? 0;
-        return ascending ? stockA.compareTo(stockB) : stockB.compareTo(stockA);
-      }
-      return 0;
-    });
-    return sortedParts;
-  }
+        return stockA.compareTo(stockB);
+      });
 
-  // Get parts with search and sort applied
-  List<Part> applySearchAndSort(List<Part> parts, String searchQuery, String sortBy, {bool ascending = true}) {
-    var filtered = parts.where((p) => p.partName.toLowerCase().contains(searchQuery.toLowerCase())).toList();
-    filtered.sort((a, b) {
+      return sorted;
+    }
+
+    sorted.sort((a, b) {
       if (sortBy == 'Name') {
         return ascending
             ? a.partName.toLowerCase().compareTo(b.partName.toLowerCase())
             : b.partName.toLowerCase().compareTo(a.partName.toLowerCase());
-      } else if (sortBy == 'Stock') {
+      } else if (sortBy == 'Quantity') {
         final stockA = a.currentQty ?? 0;
         final stockB = b.currentQty ?? 0;
         return ascending ? stockA.compareTo(stockB) : stockB.compareTo(stockA);
       }
       return 0;
     });
-    return filtered;
+
+    return sorted;
+  }
+
+  // Get parts with search and sort applied
+  List<Part> applySearchAndSort(
+    List<Part> parts,
+    String searchQuery,
+    String sortBy, {
+    bool ascending = true,
+    String? statusFilter, 
+  }) {
+    final searched = searchParts(parts, searchQuery);
+    return sortParts(searched, sortBy, ascending: ascending, statusFilter: statusFilter);
   }
 
   // Check if part exists by name

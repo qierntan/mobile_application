@@ -45,13 +45,18 @@ class ProcurementController {
     if (query.isEmpty) return procurements;
     
     final lowercaseQuery = query.toLowerCase();
-    return procurements.where((procurement) {
-      return procurement.partName.toLowerCase().contains(lowercaseQuery);
+    return procurements.where((p) {
+      return p.partName.toLowerCase().contains(lowercaseQuery) || p.warehouse.toLowerCase().contains(lowercaseQuery);
     }).toList();
   }
 
   // Sort procurements by requested date or status
-  List<Procurement> sortProcurements(List<Procurement> procurements, String sortBy, {bool descending = true, ProcurementStatus? statusFilter}) {
+  List<Procurement> sortProcurements(
+    List<Procurement> procurements, 
+    String sortBy, {
+    bool descending = true, 
+    ProcurementStatus? statusFilter
+  }) {
     List<Procurement> sorted = List.from(procurements);
 
     if (sortBy == 'Requested Date') {
@@ -113,5 +118,34 @@ class ProcurementController {
       if (!exists) return newId;
     }
     throw Exception("Unable to generate unique ID");
+  }
+
+  Future<void> markAsReceived(Procurement procurement) async {
+    try {
+      final partRef = _firestore.collection('Part').doc(procurement.partId);
+
+      await _firestore.runTransaction((transaction) async {
+        // Get current part data
+        final partDoc = await transaction.get(partRef);
+        if (!partDoc.exists) throw Exception("Part not found");
+
+        final currentQty = (partDoc.data()?['currentQty'] ?? 0) as int;
+        final newQty = currentQty + procurement.orderQty;
+
+        // Update part stock
+        transaction.update(partRef, {'currentQty': newQty});
+
+        // Update procurement status to delivered
+        transaction.update(
+          _firestore.collection(_collectionName).doc(procurement.id),
+          {
+            'status': ProcurementStatus.delivered.value,
+            'deliveredDate': Timestamp.fromDate(DateTime.now()),
+          },
+        );
+      });
+    } catch (e) {
+      throw Exception("Error marking procurement as received: $e");
+    }
   }
 }

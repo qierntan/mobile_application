@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 class Part {
   final String? id;
   final String partName;
+  final String? description;
   final String? partWarehouse;
   final double? partPrice;
   final int? partThreshold;
@@ -12,8 +13,9 @@ class Part {
   final String? imageUrl;
 
   Part({
-    this.id,
+    required this.id,
     required this.partName,
+    this.description,
     this.partWarehouse,
     this.partPrice,
     this.partThreshold,
@@ -27,6 +29,7 @@ class Part {
     return Part(
       id: documentId,
       partName: map['partName'] ?? '',
+      description: map['description'] ?? '',
       partWarehouse: map['partWarehouse'] ?? '',
       partPrice: (map['partPrice'] != null) ? (map['partPrice'] as num).toDouble() : 0.0,
       partThreshold: map['partThreshold'],
@@ -45,6 +48,7 @@ class Part {
   Map<String, dynamic> toMap() {
     return {
       'partName': partName,
+      'description': description,
       'partWarehouse': partWarehouse,
       'partPrice': partPrice,
       'partThreshold': partThreshold,
@@ -58,6 +62,7 @@ class Part {
   Part copyWith({
     String? id,
     String? partName,
+    String? description,
     String? partWarehouse,
     double? partPrice,
     int? partThreshold,
@@ -69,6 +74,7 @@ class Part {
     return Part(
       id: id ?? this.id,
       partName: partName ?? this.partName,
+      description: description ?? this.description,
       partWarehouse: partWarehouse ?? this.partWarehouse,
       partPrice: partPrice ?? this.partPrice,
       partThreshold: partThreshold ?? this.partThreshold,
@@ -90,6 +96,7 @@ class Part {
     return other is Part &&
         other.id == id &&
         other.partName == partName &&
+        other.description == description &&
         other.partWarehouse == partWarehouse &&
         other.partPrice == partPrice &&
         other.partThreshold == partThreshold &&
@@ -101,6 +108,7 @@ class Part {
   int get hashCode {
     return id.hashCode ^
         partName.hashCode ^
+        description.hashCode ^
         partWarehouse.hashCode ^
         partPrice.hashCode ^
         partThreshold.hashCode ^

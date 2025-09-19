@@ -35,7 +35,7 @@ class _ProcurementHistoryScreenState extends State<ProcurementHistoryScreen> {
     }
   }
 
-@override
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F3EF),
@@ -60,15 +60,20 @@ class _ProcurementHistoryScreenState extends State<ProcurementHistoryScreen> {
                     elevation: 2,
                     borderRadius: BorderRadius.circular(30),
                     child: TextField(
-                      decoration: const InputDecoration(
-                        hintText: 'Search Part',
+                      controller: _searchController,
+                      decoration: InputDecoration(
+                        hintText: 'Search Part or Warehouse',
                         prefixIcon: Icon(Icons.search),
                         border: InputBorder.none,
                         contentPadding: EdgeInsets.symmetric(vertical: 14),
                         filled: true,
                         fillColor: Colors.white,
                       ),
-                      onChanged: (val) => setState(() => _searchQuery = val.trim().toLowerCase()),
+                      onChanged: (value) {
+                        setState(() {
+                          _searchQuery = value.trim().toLowerCase();
+                        });
+                      },
                     ),
                   ),
                 ),
@@ -196,6 +201,27 @@ class _ProcurementHistoryScreenState extends State<ProcurementHistoryScreen> {
                                       const Text("Delivered: ", style: TextStyle(color: Colors.black54)),
                                       Text(DateFormat("yyyy-MM-dd").format(p.deliveredDate!)),
                                     ],
+                                  ),
+
+                                if (p.status == ProcurementStatus.approved)
+                                  Align(
+                                    alignment: Alignment.centerRight,
+                                    child: ElevatedButton(
+                                      onPressed: () async {
+                                        await _procurementController.markAsReceived(p);
+                                        if (mounted) {
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            const SnackBar(content: Text("Procurement marked as received")),
+                                          );
+                                        }
+                                      },
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.green,
+                                        foregroundColor: Colors.white,
+                                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                      ),
+                                      child: const Text("Received"),
+                                    ),
                                   ),
                               ],
                             ),

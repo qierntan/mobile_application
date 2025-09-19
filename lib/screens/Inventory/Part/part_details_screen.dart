@@ -1,12 +1,36 @@
 import 'package:flutter/material.dart';
-import 'package:mobile_application/model/inventory_management/part.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:mobile_application/model/inventory_management/part.dart';
 import 'package:mobile_application/screens/Inventory/Part/part_edit_screen.dart';
 import 'package:mobile_application/screens/Inventory/Procurement/procurement_request_screen.dart';
 
-class PartDetailsScreen extends StatelessWidget {
+class PartDetailsScreen extends StatefulWidget {
   final Part part;
   const PartDetailsScreen({super.key, required this.part});
+
+  @override
+  State<PartDetailsScreen> createState() => _PartDetailsScreenState();
+}
+
+class _PartDetailsScreenState extends State<PartDetailsScreen> {
+  late Part part;
+
+  @override
+  void initState() {
+    super.initState();
+    part = widget.part;
+  }
+
+  Future<void> _refreshPart() async {
+    if (part.id != null) {
+      final snap = await FirebaseFirestore.instance.collection('Part').doc(part.id).get();
+      if (snap.exists) {
+        setState(() {
+          part = Part.fromMap(snap.data()!, snap.id);
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -62,7 +86,7 @@ class PartDetailsScreen extends StatelessWidget {
                 ),
               );
               if (updated == true && context.mounted) {
-                Navigator.pop(context, true);
+                await _refreshPart();
               }
             },
           ),
@@ -117,23 +141,26 @@ class PartDetailsScreen extends StatelessWidget {
           ),
 
           // Details
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8),
-            child: Column(
-              children: [
-                _buildDetailRow("Current Quantity", "${part.currentQty ?? 0}"),
-                _buildDetailRow("Minimum Threshold", "${part.partThreshold ?? 0}"),
-                _buildDetailRow("Price Per Unit (RM)", "${part.partPrice ?? 0}"),
-                _buildDetailRow("Warehouse", part.partWarehouse ?? "-"),
-              ],
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _buildDetailRow("Current Quantity", "${part.currentQty ?? 0}"),
+                  _buildDetailRow("Minimum Threshold", "${part.partThreshold ?? 0}"),
+                  _buildDetailRow("Price Per Unit (RM)", "${part.partPrice ?? 0}"),
+                  _buildDetailRow("Warehouse", part.partWarehouse ?? "-"),
+                  _buildDetailRow("Description", part.description ?? "-"),
+                  const SizedBox(height: 80), 
+                ],
+              ),
             ),
           ),
 
-          const Spacer(),
-
           // Procurement Button
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
             child: SizedBox(
               width: double.infinity,
               height: 56,
@@ -170,15 +197,48 @@ class PartDetailsScreen extends StatelessWidget {
   }
 
   Widget _buildDetailRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text("$label :", style: const TextStyle(color: Colors.black87, fontSize: 14)),
-          Text(value, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-        ],
-      ),
-    );
-  } 
+    if (label == "Description") {
+      // Multi line support
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              "$label :",
+              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              value,
+              style: const TextStyle(fontSize: 14),
+              softWrap: true,
+              textAlign: TextAlign.justify,
+            ),
+          ],
+        ),
+      );
+    } else {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6.0),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              "$label :",
+              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+            ),
+            Flexible( // prevent overflow 
+              child: Text(
+                value,
+                textAlign: TextAlign.right,
+                style: const TextStyle(fontSize: 14),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+  }
 }

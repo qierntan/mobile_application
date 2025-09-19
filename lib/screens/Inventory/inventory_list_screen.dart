@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:mobile_application/model/inventory_management/part.dart';
 import 'package:mobile_application/controller/inventory_management/part_controller.dart';
-import 'package:mobile_application/screens/Inventory/Part/part_add_screen.dart';
+import 'Part/part_add_screen.dart';
 import 'Warehouse/warehouse_list_screen.dart';
 import 'Part/part_details_screen.dart';
-import 'package:mobile_application/screens/Inventory/Procurement/procurement_request_screen.dart';
-import 'package:mobile_application/screens/Inventory/Procurement/procurement_history_screen.dart';
+import 'Procurement/procurement_request_screen.dart';
+import 'Procurement/procurement_history_screen.dart';
 
 class InventoryListScreen extends StatefulWidget {
   const InventoryListScreen({super.key});
@@ -19,6 +19,7 @@ class _InventoryListScreenState extends State<InventoryListScreen> {
   final PartController _partController = PartController();
   String _searchQuery = '';
   String _sortBy = 'Name'; 
+  String? _filterStatus;
   bool _ascending = true;
   final GlobalKey _menuKey = GlobalKey();
 
@@ -96,23 +97,43 @@ class _InventoryListScreenState extends State<InventoryListScreen> {
               children: [
                 DropdownButton<String>(
                   value: _sortBy,
-                  items: ['Name', 'Stock'].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
-                  onChanged: (val) => setState(() => _sortBy = val!),
+                  items: ['Name', 'Quantity', 'Status']
+                      .map((s) => DropdownMenuItem(value: s, child: Text(s)))
+                      .toList(),
+                  onChanged: (val) {
+                    setState(() {
+                      _sortBy = val!;
+                      _filterStatus = null; // reset when switching type
+                    });
+                  },
                 ),
                 const SizedBox(width: 12),
-                IconButton(
-                  icon: Icon(_ascending ? Icons.arrow_upward : Icons.arrow_downward),
-                  onPressed: () => setState(() => _ascending = !_ascending),
-                ),
+
+                // Show second dropdown only if sorting by Status
+                if (_sortBy == 'Status')
+                  DropdownButton<String>(
+                    value: _filterStatus,
+                    hint: const Text('Select Status'),
+                    items: ['Low', 'Sufficient']
+                        .map((s) => DropdownMenuItem(value: s, child: Text(s)))
+                        .toList(),
+                    onChanged: (val) => setState(() => _filterStatus = val),
+                  )
+                else
+                  // Show arrow toggle for Name / Quantity
+                  IconButton(
+                    icon: Icon(_ascending ? Icons.arrow_upward : Icons.arrow_downward),
+                    onPressed: () => setState(() => _ascending = !_ascending),
+                  ),
+
                 const Spacer(),
+
                 IconButton(
                   icon: const Icon(Icons.add_circle_outline),
                   onPressed: () async {
                     final added = await Navigator.push(
                       context,
-                      MaterialPageRoute(
-                        builder: (_) => const PartAddScreen(),
-                      ),
+                      MaterialPageRoute(builder: (_) => const PartAddScreen()),
                     );
                     if (added == true && mounted) {
                       setState(() {});
@@ -142,6 +163,7 @@ class _InventoryListScreenState extends State<InventoryListScreen> {
                   _searchQuery,
                   _sortBy,
                   ascending: _ascending,
+                  statusFilter: _filterStatus,
                 );
 
                 if (filtered.isEmpty) {

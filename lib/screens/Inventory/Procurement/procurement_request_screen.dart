@@ -14,9 +14,8 @@ class ProcurementRequestScreen extends StatefulWidget {
 }
 
 class _ProcurementRequestScreenState extends State<ProcurementRequestScreen> {
-  Part? _part;
-  final PartController _partController = PartController();
   final ProcurementController _procurementController = ProcurementController();
+  final PartController _partController = PartController();
 
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _qtyController = TextEditingController();
@@ -24,8 +23,9 @@ class _ProcurementRequestScreenState extends State<ProcurementRequestScreen> {
 
   DateTime? _expectedDate;
   bool _save = false;
+  Part? _part; // store loaded part details
 
-    @override
+  @override
   void initState() {
     super.initState();
     _loadPartDetails();
@@ -45,6 +45,7 @@ class _ProcurementRequestScreenState extends State<ProcurementRequestScreen> {
 
     try {
       final procurement = Procurement(
+        partId: widget.partId,
         partName: _part!.partName,
         orderQty: int.parse(_qtyController.text),
         warehouse: _part!.partWarehouse!,
@@ -56,12 +57,11 @@ class _ProcurementRequestScreenState extends State<ProcurementRequestScreen> {
 
       await _procurementController.addProcurement(procurement);
 
-      if (mounted) {
-        Navigator.pop(context); 
-      }
+      if (mounted) Navigator.pop(context);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $e')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Failed: $e')));
     } finally {
       if (mounted) setState(() => _save = false);
     }
@@ -76,9 +76,7 @@ class _ProcurementRequestScreenState extends State<ProcurementRequestScreen> {
       lastDate: DateTime(now.year + 5),
     );
     if (picked != null) {
-      setState(() {
-        _expectedDate = picked;
-      });
+      setState(() => _expectedDate = picked);
     }
   }
 
@@ -93,105 +91,122 @@ class _ProcurementRequestScreenState extends State<ProcurementRequestScreen> {
           icon: const Icon(Icons.arrow_back, color: Colors.black),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text('Procurement Request', style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold)),
+        title: const Text(
+          'Procurement Request',
+          style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
+        ),
       ),
-      body: Form(
-        key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.all(16),
-          children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+      body: _part == null
+          ? const Center(child: CircularProgressIndicator())
+          : Form(
+              key: _formKey,
+              child: ListView(
+                padding: const EdgeInsets.all(16),
                 children: [
-                  const Text('Part Name'), //read only
-                  const SizedBox(height: 4),
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade300,
-                      borderRadius: BorderRadius.circular(12),
+                  // Part Name (read only)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('Part Name'),
+                        const SizedBox(height: 4),
+                        Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.grey.shade300,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(_part!.partName),
+                        ),
+                      ],
                     ),
-                    child: Text(_part?.partName ?? ""),
+                  ),
+
+                  _field('Quantity', _qtyController,
+                      keyboardType: TextInputType.number),
+
+                  // Expected Date picker
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8.0),
+                    child: GestureDetector(
+                      onTap: _pickDate,
+                      child: AbsorbPointer(
+                        child: TextFormField(
+                          controller: TextEditingController(
+                            text: _expectedDate != null
+                                ? DateFormat("yyyy-MM-dd")
+                                    .format(_expectedDate!)
+                                : "",
+                          ),
+                          decoration: InputDecoration(
+                            labelText: "Expected Date",
+                            filled: true,
+                            fillColor: Colors.white,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide.none,
+                            ),
+                            contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 14),
+                            suffixIcon: const Icon(Icons.calendar_today),
+                          ),
+                          validator: (v) =>
+                              v == null || v.isEmpty ? 'Required' : null,
+                        ),
+                      ),
+                    ),
+                  ),
+
+                  _field('Remarks (if any)', _remarksController,
+                      validator: (_) => null),
+
+                  const SizedBox(height: 16),
+                  Center(
+                    child: ElevatedButton(
+                      onPressed: _save ? null : _submit,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: Colors.black,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16)),
+                      ),
+                      child: _save
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child:
+                                  CircularProgressIndicator(strokeWidth: 2))
+                          : const Text('Submit'),
+                    ),
                   ),
                 ],
               ),
             ),
-
-            _field('Quantity', _qtyController, keyboardType: TextInputType.number),
-
-            // Expected Date picker
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8.0),
-              child: GestureDetector(
-                onTap: _pickDate,
-                child: AbsorbPointer(
-                  child: TextFormField(
-                    controller: TextEditingController(
-                      text: _expectedDate != null
-                          ? DateFormat("yyyy-MM-dd").format(_expectedDate!)
-                          : "",
-                    ),
-                    decoration: InputDecoration(
-                      labelText: "Expected Date",
-                      filled: true,
-                      fillColor: Colors.white,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide.none,
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
-                      suffixIcon: const Icon(Icons.calendar_today),
-                    ),
-                    validator: (v) => v == null || v.isEmpty ? 'Required' : null,
-                  ),
-                ),
-              ),
-            ),
-
-            _field('Remarks (if any)', _remarksController, validator: (_) => null),
-
-            const SizedBox(height: 16),
-            Center(
-              child: ElevatedButton(
-                onPressed: _save ? null : _submit,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  foregroundColor: Colors.black,
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                ),
-                child: _save
-                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                    : const Text('Submit'),
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 
-  Widget _field(
-    String label,
-    TextEditingController controller,{
-    TextInputType? keyboardType,
-    FormFieldValidator<String>? validator
-  }) {
+  Widget _field(String label, TextEditingController controller,
+      {TextInputType? keyboardType,
+      FormFieldValidator<String>? validator}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: TextFormField(
         controller: controller,
         keyboardType: keyboardType,
-        validator: validator ?? (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
+        validator: validator ??
+            (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
         decoration: InputDecoration(
           labelText: label,
           filled: true,
           fillColor: Colors.white,
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+          border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide.none),
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
         ),
       ),
     );
