@@ -35,6 +35,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         _dashboardController.getInvoiceStatistics(),
       ]);
 
+      if (!mounted) return;
       setState(() {
         totalCustomers = results[0] as int;
         totalMechanics = results[1] as int;
@@ -43,6 +44,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       });
     } catch (e) {
       print('Error loading dashboard data: $e');
+      if (!mounted) return;
       setState(() {
         isLoading = false;
       });

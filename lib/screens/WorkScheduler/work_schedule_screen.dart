@@ -11,9 +11,36 @@ class WorkScheduleScreen extends StatefulWidget {
 
 class _WorkScheduleScreenState extends State<WorkScheduleScreen> {
   DateTime selectedDate = DateTime.now();
-  String selectedMechanic = 'Dylan Leong';
+  String? selectedMechanicId; // mechanicId from Mechanics collection
   
-  List<String> mechanics = ['Dylan Leong', 'Jackson Lee', 'Dixon Yap'];
+  List<Map<String, String>> mechanics = []; // [{mechanicId, name}]
+
+  @override
+  void initState() {
+    super.initState();
+    _loadMechanics();
+  }
+
+  Future<void> _loadMechanics() async {
+    try {
+      final snap = await FirebaseFirestore.instance.collection('Mechanics').get();
+      final loaded = snap.docs.map((d) {
+        final m = d.data();
+        return {
+          'mechanicId': (m['mechanicId'] ?? '').toString(),
+          'name': (m['name'] ?? '').toString(),
+        };
+      }).where((m) => m['mechanicId']!.isNotEmpty && m['name']!.isNotEmpty).toList();
+      if (!mounted) return;
+      setState(() {
+        mechanics = loaded;
+        if (selectedMechanicId == null && mechanics.isNotEmpty) {
+          selectedMechanicId = mechanics.first['mechanicId'];
+        }
+      });
+    } catch (_)
+    {}
+  }
   
   List<String> timeSlots = [
     '9:00 AM',
@@ -119,7 +146,7 @@ class _WorkScheduleScreenState extends State<WorkScheduleScreen> {
         id: doc.id,
         carModel: carModel,
         plateNumber: plateNumber,
-        mechanic: data['mechanicName'] ?? '',
+        mechanic: (data['mechanicId'] ?? '').toString(), // store mechanicId for filtering
         serviceType: data['serviceType'] ?? '',
         scheduledTime: actualTime,
         imageUrl: imageUrl,
@@ -129,8 +156,10 @@ class _WorkScheduleScreenState extends State<WorkScheduleScreen> {
 
     // Filter by selected mechanic and date
     List<Job> filteredJobs = allJobs.where((job) {
-      // Filter by selected mechanic
-      bool mechanicMatch = job.mechanic == selectedMechanic;
+      // Filter by selected mechanic (by id)
+      bool mechanicMatch = (selectedMechanicId == null)
+          ? true
+          : job.mechanic == selectedMechanicId;
       
       // Filter by selected date (same day) - convert to local time
       DateTime localTime = job.scheduledTime.toLocal();
@@ -357,16 +386,18 @@ class _WorkScheduleScreenState extends State<WorkScheduleScreen> {
                     
                     SizedBox(height: 16),
                     
-                    // Mechanic chips
-                    Row(
+                    // Mechanic chips (horizontally scrollable)
+                    SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
                       children: mechanics.map((mechanic) {
-                        bool isSelected = mechanic == selectedMechanic;
+                        final isSelected = mechanic['mechanicId'] == selectedMechanicId;
                         return Container(
                           margin: EdgeInsets.only(right: 8),
                           child: GestureDetector(
                             onTap: () {
                               setState(() {
-                                selectedMechanic = mechanic;
+                                selectedMechanicId = mechanic['mechanicId'];
                               });
                             },
                             child: Container(
@@ -376,7 +407,7 @@ class _WorkScheduleScreenState extends State<WorkScheduleScreen> {
                                 borderRadius: BorderRadius.circular(16),
                               ),
                               child: Text(
-                                mechanic,
+                                mechanic['name'] ?? '',
                                 style: TextStyle(
                                   fontSize: 12,
                                   color: isSelected ? Colors.white : Colors.black87,
@@ -387,6 +418,7 @@ class _WorkScheduleScreenState extends State<WorkScheduleScreen> {
                           ),
                         );
                       }).toList(),
+                      ),
                     ),
                     
                     SizedBox(height: 20),

@@ -95,31 +95,15 @@ class DashboardController {
     }
   }
 
-  /// Get total mechanics count by counting unique mechanic names from Jobs collection
+  /// Get total mechanics count from Mechanics collection
   Future<int> getTotalMechanics() async {
     try {
-      // Get all jobs to extract unique mechanic names
-      final QuerySnapshot snapshot = await _firestore.collection('Jobs').get();
-      
-      // Use a Set to store unique mechanic names
-      Set<String> uniqueMechanics = <String>{};
-      
-      for (var doc in snapshot.docs) {
-        final data = doc.data() as Map<String, dynamic>;
-        final mechanicName = data['mechanicName']?.toString().trim();
-        
-        // Only add non-empty mechanic names
-        if (mechanicName != null && mechanicName.isNotEmpty) {
-          uniqueMechanics.add(mechanicName);
-        }
-      }
-      
-      print('Found ${uniqueMechanics.length} unique mechanics: ${uniqueMechanics.toList()}');
-      return uniqueMechanics.length;
+      final QuerySnapshot snapshot =
+          await _firestore.collection('Mechanics').get();
+      return snapshot.docs.length;
     } catch (e) {
-      print('Error fetching mechanics count from Jobs: $e');
-      // Return default value based on hardcoded mechanics in work scheduler
-      return 3; // Jackson Lee, Dylan Leong, Dixon Yap
+      print('Error fetching mechanics count: $e');
+      return 0;
     }
   }
 
