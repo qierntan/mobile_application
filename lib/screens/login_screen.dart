@@ -34,9 +34,13 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   void _login() async {
+    // Check if fields are empty
     if (_usernameController.text.isEmpty || _passwordController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Please enter username and password')),
+        SnackBar(
+          content: Text('Please enter username and password'),
+          backgroundColor: Colors.red,
+        ),
       );
       return;
     }
@@ -45,18 +49,34 @@ class _LoginScreenState extends State<LoginScreen> {
       _isLoading = true;
     });
 
-    // Save credentials if remember me is checked
-    await RememberMeService.saveCredentials(
-      username: _usernameController.text,
-      password: _passwordController.text,
-      rememberMe: _rememberMe,
-    );
+    // Simulate login delay
+    await Future.delayed(Duration(milliseconds: 500));
 
-    // Simple authentication - in real app, validate against backend
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (context) => HomeNavigator()),
-    );
+    // Check if username and password are both "admin"
+    if (_usernameController.text == 'admin' &&
+        _passwordController.text == 'admin') {
+      // Save credentials if remember me is checked
+      await RememberMeService.saveCredentials(
+        username: _usernameController.text,
+        password: _passwordController.text,
+        rememberMe: _rememberMe,
+      );
+
+      // Navigate to home screen
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => HomeNavigator()),
+      );
+    } else {
+      // Show error message for invalid credentials
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Invalid username or password. Please try again.'),
+          backgroundColor: Colors.red,
+          duration: Duration(seconds: 3),
+        ),
+      );
+    }
 
     setState(() {
       _isLoading = false;

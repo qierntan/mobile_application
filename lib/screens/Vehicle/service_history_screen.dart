@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../../main.dart';
 import '../../controller/service_invoice_controller.dart';
 
 class ServiceHistoryScreen extends StatefulWidget {
@@ -18,7 +17,8 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
   bool _sortDescending = true;
   String _filterServiceType = 'All';
   double _minCost = 0;
-  double _maxCost = 1000000; // Increased to 1 million to accommodate expensive services
+  double _maxCost =
+      1000000; // Increased to 1 million to accommodate expensive services
   DateTime? _startDate;
   DateTime? _endDate;
   List<String> _availableServiceTypes = ['All'];
@@ -47,99 +47,43 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
           // Service History List
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance
-            .collection('ServiceRecord')
-            .where('vehicleId', isEqualTo: widget.vehicleId)
-            .orderBy('date', descending: true)
-            .snapshots(),
-        builder: (context, snapshot) {
-          
-          if (snapshot.hasError) {
-            return Center(
-              child: Text('Error: ${snapshot.error}'),
-            );
-          }
+              stream:
+                  FirebaseFirestore.instance
+                      .collection('ServiceRecord')
+                      .where('vehicleId', isEqualTo: widget.vehicleId)
+                      .orderBy('date', descending: true)
+                      .snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.hasError) {
+                  return Center(child: Text('Error: ${snapshot.error}'));
+                }
 
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return Center(
-              child: CircularProgressIndicator(),
-            );
-          }
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return Center(child: CircularProgressIndicator());
+                }
 
-          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.history,
-                    size: 64,
-                    color: Colors.grey,
-                  ),
-                  SizedBox(height: 16),
-                  Text(
-                    'No service history found',
-                    style: TextStyle(
-                      fontSize: 18,
-                      color: Colors.grey,
+                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.history, size: 64, color: Colors.grey),
+                        SizedBox(height: 16),
+                        Text(
+                          'No service history found',
+                          style: TextStyle(fontSize: 18, color: Colors.grey),
+                        ),
+                      ],
                     ),
-                  ),
-                ],
-              ),
-            );
-          }
+                  );
+                }
 
-          final filteredAndSortedDocs = _filterAndSortDocuments(snapshot.data!.docs);
-          return _buildServiceHistoryList(filteredAndSortedDocs);
-        },
+                final filteredAndSortedDocs = _filterAndSortDocuments(
+                  snapshot.data!.docs,
+                );
+                return _buildServiceHistoryList(filteredAndSortedDocs);
+              },
             ),
-          ),
-        ],
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: 1, // Customers tab should be selected for service history
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: Color.fromARGB(255, 178, 72, 249),
-        unselectedItemColor: Colors.grey,
-        onTap: (index) {
-          // Handle navigation based on index
-          switch (index) {
-            case 0:
-              Navigator.pushAndRemoveUntil(
-                context,
-                MaterialPageRoute(builder: (context) => HomeNavigator()),
-                (route) => false,
-              );
-              break;
-            case 1:
-              // Navigate to customers section
-              Navigator.pushAndRemoveUntil(
-                context,
-                MaterialPageRoute(builder: (context) => HomeNavigator()),
-                (route) => false,
-              );
-              break;
-            case 2:
-            case 3:
-            case 4:
-              // Show under development message for other tabs
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('🚧 This screen is under development.')),
-              );
-              break;
-          }
-        },
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.dashboard), label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(Icons.group), label: 'Customers'),
-          BottomNavigationBarItem(icon: Icon(Icons.assignment), label: 'Jobs'),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.inventory),
-            label: 'Inventory',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.settings),
-            label: 'Settings',
           ),
         ],
       ),
@@ -222,39 +166,29 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.filter_list_off,
-              size: 64,
-              color: Colors.grey,
-            ),
+            Icon(Icons.filter_list_off, size: 64, color: Colors.grey),
             SizedBox(height: 16),
             Text(
               'No service records match your filters',
-              style: TextStyle(
-                fontSize: 18,
-                color: Colors.grey,
-              ),
+              style: TextStyle(fontSize: 18, color: Colors.grey),
             ),
             SizedBox(height: 8),
             Text(
               'Try adjusting your filter settings',
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey[600],
-              ),
+              style: TextStyle(fontSize: 14, color: Colors.grey[600]),
             ),
           ],
         ),
       );
     }
-    
+
     return ListView.builder(
       padding: EdgeInsets.all(20),
       itemCount: documents.length,
       itemBuilder: (context, index) {
         final doc = documents[index];
         final data = doc.data() as Map<String, dynamic>;
-        
+
         // Parse date from Firestore (handle both Timestamp and String)
         DateTime date;
         if (data['date'] is Timestamp) {
@@ -267,12 +201,13 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
           // Fallback to current date if format is unexpected
           date = DateTime.now();
         }
-        
+
         final String serviceType = data['serviceType'] ?? 'Service';
         final int kilometers = (data['kilometers'] ?? 0).toInt();
         final double cost = (data['cost'] ?? 0.0).toDouble();
         final String description = data['description'] ?? '';
-        final String formattedDate = '${date.day.toString().padLeft(2, '0')} ${_getMonthName(date.month)} ${date.year}';
+        final String formattedDate =
+            '${date.day.toString().padLeft(2, '0')} ${_getMonthName(date.month)} ${date.year}';
 
         return Container(
           margin: EdgeInsets.only(bottom: 16),
@@ -311,21 +246,22 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
                           context: currentContext,
                           barrierDismissible: false,
                           builder: (BuildContext context) {
-                            return Center(
-                              child: CircularProgressIndicator(),
-                            );
+                            return Center(child: CircularProgressIndicator());
                           },
                         );
 
                         // Generate service invoice PDF
-                        await ServiceInvoiceController.generateServiceInvoice(data, widget.vehicleId);
-                        
+                        await ServiceInvoiceController.generateServiceInvoice(
+                          data,
+                          widget.vehicleId,
+                        );
+
                         // Close loading indicator
                         if (mounted) Navigator.of(currentContext).pop();
                       } catch (e) {
                         // Close loading indicator
                         if (mounted) Navigator.of(currentContext).pop();
-                        
+
                         // Show error message
                         if (mounted) {
                           ScaffoldMessenger.of(currentContext).showSnackBar(
@@ -338,7 +274,10 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
                       }
                     },
                     child: Container(
-                      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 6,
+                      ),
                       decoration: BoxDecoration(
                         color: Color(0xFFFF9800),
                         borderRadius: BorderRadius.circular(16),
@@ -402,8 +341,18 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
 
   String _getMonthName(int month) {
     const months = [
-      'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-      'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
     ];
     return months[month - 1];
   }
@@ -427,17 +376,18 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
 
   bool _hasActiveFilters() {
     return _filterServiceType != 'All' ||
-           _startDate != null ||
-           _endDate != null ||
-           _minCost > 0 ||
-           _maxCost < 1000000;
+        _startDate != null ||
+        _endDate != null ||
+        _minCost > 0 ||
+        _maxCost < 1000000;
   }
 
   String _getActiveFiltersText() {
     List<String> filters = [];
     if (_filterServiceType != 'All') filters.add('Type: $_filterServiceType');
     if (_startDate != null || _endDate != null) filters.add('Date range');
-    if (_minCost > 0 || _maxCost < 1000000) filters.add('Cost: RM $_minCost - RM $_maxCost');
+    if (_minCost > 0 || _maxCost < 1000000)
+      filters.add('Cost: RM $_minCost - RM $_maxCost');
     return filters.join(', ');
   }
 
@@ -542,16 +492,20 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // Service Type Filter
-                    Text('Service Type:', style: TextStyle(fontWeight: FontWeight.bold)),
+                    Text(
+                      'Service Type:',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
                     DropdownButton<String>(
                       value: _filterServiceType,
                       isExpanded: true,
-                      items: _availableServiceTypes.map((String type) {
-                        return DropdownMenuItem<String>(
-                          value: type,
-                          child: Text(type),
-                        );
-                      }).toList(),
+                      items:
+                          _availableServiceTypes.map((String type) {
+                            return DropdownMenuItem<String>(
+                              value: type,
+                              child: Text(type),
+                            );
+                          }).toList(),
                       onChanged: (String? newValue) {
                         setDialogState(() {
                           _filterServiceType = newValue!;
@@ -559,15 +513,21 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
                       },
                     ),
                     SizedBox(height: 16),
-                    
+
                     // Cost Range Filter
-                    Text('Cost Range:', style: TextStyle(fontWeight: FontWeight.bold)),
+                    Text(
+                      'Cost Range:',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
                     RangeSlider(
                       values: RangeValues(_minCost, _maxCost),
                       min: 0,
                       max: 1000000,
                       divisions: 20,
-                      labels: RangeLabels('RM ${_minCost.round()}', 'RM ${_maxCost.round()}'),
+                      labels: RangeLabels(
+                        'RM ${_minCost.round()}',
+                        'RM ${_maxCost.round()}',
+                      ),
                       onChanged: (RangeValues values) {
                         setDialogState(() {
                           _minCost = values.start;
@@ -576,9 +536,12 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
                       },
                     ),
                     SizedBox(height: 16),
-                    
+
                     // Date Range Filter
-                    Text('Date Range:', style: TextStyle(fontWeight: FontWeight.bold)),
+                    Text(
+                      'Date Range:',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
                     Row(
                       children: [
                         Expanded(
@@ -596,9 +559,11 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
                                 });
                               }
                             },
-                            child: Text(_startDate != null 
-                              ? '${_startDate!.day}/${_startDate!.month}/${_startDate!.year}'
-                              : 'Start Date'),
+                            child: Text(
+                              _startDate != null
+                                  ? '${_startDate!.day}/${_startDate!.month}/${_startDate!.year}'
+                                  : 'Start Date',
+                            ),
                           ),
                         ),
                         Text(' - '),
@@ -617,9 +582,11 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
                                 });
                               }
                             },
-                            child: Text(_endDate != null 
-                              ? '${_endDate!.day}/${_endDate!.month}/${_endDate!.year}'
-                              : 'End Date'),
+                            child: Text(
+                              _endDate != null
+                                  ? '${_endDate!.day}/${_endDate!.month}/${_endDate!.year}'
+                                  : 'End Date',
+                            ),
                           ),
                         ),
                       ],
@@ -656,7 +623,9 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
     );
   }
 
-  List<QueryDocumentSnapshot> _filterAndSortDocuments(List<QueryDocumentSnapshot> documents) {
+  List<QueryDocumentSnapshot> _filterAndSortDocuments(
+    List<QueryDocumentSnapshot> documents,
+  ) {
     // Extract unique service types for filter options
     Set<String> serviceTypes = {'All'};
     for (var doc in documents) {
@@ -667,53 +636,55 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
     _availableServiceTypes = serviceTypes.toList();
 
     // Apply filters
-    List<QueryDocumentSnapshot> filteredDocs = documents.where((doc) {
-      final data = doc.data() as Map<String, dynamic>;
-      
-      // Service type filter
-      if (_filterServiceType != 'All') {
-        final serviceType = data['serviceType'] ?? 'Service';
-        if (serviceType != _filterServiceType) {
-          return false;
-        }
-      }
-      
-      // Cost filter
-      final cost = (data['cost'] ?? 0.0).toDouble();
-      if (cost < _minCost || cost > _maxCost) {
-        return false;
-      }
-      
-      // Date filter
-      if (_startDate != null || _endDate != null) {
-        DateTime date;
-        if (data['date'] is Timestamp) {
-          final Timestamp timestamp = data['date'] as Timestamp;
-          date = timestamp.toDate();
-        } else if (data['date'] is String) {
-          date = DateTime.parse(data['date'] as String);
-        } else {
-          date = DateTime.now();
-        }
-        
-        if (_startDate != null && date.isBefore(_startDate!)) {
-          return false;
-        }
-        if (_endDate != null && date.isAfter(_endDate!.add(Duration(days: 1)))) {
-          return false;
-        }
-      }
-      
-      return true;
-    }).toList();
+    List<QueryDocumentSnapshot> filteredDocs =
+        documents.where((doc) {
+          final data = doc.data() as Map<String, dynamic>;
+
+          // Service type filter
+          if (_filterServiceType != 'All') {
+            final serviceType = data['serviceType'] ?? 'Service';
+            if (serviceType != _filterServiceType) {
+              return false;
+            }
+          }
+
+          // Cost filter
+          final cost = (data['cost'] ?? 0.0).toDouble();
+          if (cost < _minCost || cost > _maxCost) {
+            return false;
+          }
+
+          // Date filter
+          if (_startDate != null || _endDate != null) {
+            DateTime date;
+            if (data['date'] is Timestamp) {
+              final Timestamp timestamp = data['date'] as Timestamp;
+              date = timestamp.toDate();
+            } else if (data['date'] is String) {
+              date = DateTime.parse(data['date'] as String);
+            } else {
+              date = DateTime.now();
+            }
+
+            if (_startDate != null && date.isBefore(_startDate!)) {
+              return false;
+            }
+            if (_endDate != null &&
+                date.isAfter(_endDate!.add(Duration(days: 1)))) {
+              return false;
+            }
+          }
+
+          return true;
+        }).toList();
 
     // Apply sorting
     filteredDocs.sort((a, b) {
       final dataA = a.data() as Map<String, dynamic>;
       final dataB = b.data() as Map<String, dynamic>;
-      
+
       int comparison = 0;
-      
+
       switch (_sortBy) {
         case 'date':
           DateTime dateA, dateB;
@@ -724,7 +695,7 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
           } else {
             dateA = DateTime.now();
           }
-          
+
           if (dataB['date'] is Timestamp) {
             dateB = (dataB['date'] as Timestamp).toDate();
           } else if (dataB['date'] is String) {
@@ -732,23 +703,23 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
           } else {
             dateB = DateTime.now();
           }
-          
+
           comparison = dateA.compareTo(dateB);
           break;
-          
+
         case 'cost':
           final costA = (dataA['cost'] ?? 0.0).toDouble();
           final costB = (dataB['cost'] ?? 0.0).toDouble();
           comparison = costA.compareTo(costB);
           break;
-          
+
         case 'serviceType':
           final typeA = dataA['serviceType'] ?? 'Service';
           final typeB = dataB['serviceType'] ?? 'Service';
           comparison = typeA.compareTo(typeB);
           break;
       }
-      
+
       return _sortDescending ? -comparison : comparison;
     });
 

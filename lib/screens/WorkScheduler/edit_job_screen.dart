@@ -147,12 +147,28 @@ class _EditJobScreenState extends State<EditJobScreen> {
         
         if (mechanicId.isNotEmpty && name.isNotEmpty) {
           // Include mechanic if they're available OR if they're currently assigned to this job
-          if (availableMechanicIds.contains(mechanicId) || _selectedMechanicId == mechanicId) {
+          // Note: We need to check the current job's mechanicId from the database, not _selectedMechanicId
+          // which might not be set yet during initial load
+          bool isCurrentlyAssigned = false;
+          if (widget.jobId.isNotEmpty) {
+            try {
+              final currentJobDoc = await FirebaseFirestore.instance.collection('Jobs').doc(widget.jobId).get();
+              if (currentJobDoc.exists) {
+                final currentJobData = currentJobDoc.data() as Map<String, dynamic>;
+                final currentJobMechanicId = (currentJobData['mechanicId'] ?? '').toString();
+                isCurrentlyAssigned = currentJobMechanicId == mechanicId;
+              }
+            } catch (e) {
+              print('Error checking current job assignment: $e');
+            }
+          }
+          
+          if (availableMechanicIds.contains(mechanicId) || isCurrentlyAssigned) {
             availableMechanics.add({
               'mechanicId': mechanicId,
               'name': name,
             });
-            print('→ Including mechanic: $name ($mechanicId)');
+            print('→ Including mechanic: $name ($mechanicId) - ${isCurrentlyAssigned ? 'currently assigned' : 'available'}');
           } else {
             print('→ Excluding mechanic: $name ($mechanicId) - not available');
           }
@@ -245,6 +261,17 @@ class _EditJobScreenState extends State<EditJobScreen> {
             // Current mechanic is no longer available, clear selection
             _selectedMechanicId = null;
             print('→ Current mechanic is no longer available, cleared selection');
+            
+            // Show warning to user
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Selected mechanic is no longer available at this time. Please choose another mechanic.'),
+                  backgroundColor: Colors.orange,
+                  duration: Duration(seconds: 3),
+                ),
+              );
+            }
           }
         }
       });
@@ -283,6 +310,7 @@ class _EditJobScreenState extends State<EditJobScreen> {
     if (_selectedMechanicId != null && _selectedMechanicId!.isNotEmpty && _selectedDateTime != null) {
       print('Running conflict check...');
       print('CONDITIONS MET: mechanicId=$_selectedMechanicId, dateTime=$_selectedDateTime');
+      print('CONDITIONS MET: mechanicId type=${_selectedMechanicId.runtimeType}, dateTime type=${_selectedDateTime.runtimeType}');
       final hasConflict = await JobConflictService.checkTimeConflict(
         currentJobId: widget.jobId,
         mechanicId: _selectedMechanicId!,
