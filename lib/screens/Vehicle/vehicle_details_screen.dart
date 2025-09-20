@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'service_history_screen.dart';
-import '../../main.dart';
 
 class VehicleDetailsScreen extends StatelessWidget {
   final String vehicleId;
@@ -26,7 +25,11 @@ class VehicleDetailsScreen extends StatelessWidget {
         centerTitle: false,
       ),
       body: FutureBuilder<DocumentSnapshot>(
-        future: FirebaseFirestore.instance.collection('Vehicle').doc(vehicleId).get(),
+        future:
+            FirebaseFirestore.instance
+                .collection('Vehicle')
+                .doc(vehicleId)
+                .get(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return Center(child: CircularProgressIndicator());
@@ -59,33 +62,34 @@ class VehicleDetailsScreen extends StatelessWidget {
                     ),
                     child: ClipRRect(
                       borderRadius: BorderRadius.circular(16),
-                      child: imageUrl != null && imageUrl.isNotEmpty
-                          ? Image.network(
-                              imageUrl,
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) {
-                                return Container(
-                                  color: Colors.grey.shade200,
-                                  child: Icon(
-                                    Icons.directions_car,
-                                    size: 80,
-                                    color: Colors.grey.shade500,
-                                  ),
-                                );
-                              },
-                            )
-                          : Container(
-                              color: Colors.grey.shade200,
-                              child: Icon(
-                                Icons.directions_car,
-                                size: 80,
-                                color: Colors.grey.shade500,
+                      child:
+                          imageUrl != null && imageUrl.isNotEmpty
+                              ? Image.network(
+                                imageUrl,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return Container(
+                                    color: Colors.grey.shade200,
+                                    child: Icon(
+                                      Icons.directions_car,
+                                      size: 80,
+                                      color: Colors.grey.shade500,
+                                    ),
+                                  );
+                                },
+                              )
+                              : Container(
+                                color: Colors.grey.shade200,
+                                child: Icon(
+                                  Icons.directions_car,
+                                  size: 80,
+                                  color: Colors.grey.shade500,
+                                ),
                               ),
-                            ),
                     ),
                   ),
                   SizedBox(height: 24),
-                  
+
                   // Vehicle Info Section
                   Container(
                     width: double.infinity,
@@ -122,7 +126,7 @@ class VehicleDetailsScreen extends StatelessWidget {
                     ),
                   ),
                   SizedBox(height: 24),
-                  
+
                   // Service History Button
                   Center(
                     child: ElevatedButton(
@@ -130,13 +134,18 @@ class VehicleDetailsScreen extends StatelessWidget {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) => ServiceHistoryScreen(vehicleId: vehicleId),
+                            builder:
+                                (context) =>
+                                    ServiceHistoryScreen(vehicleId: vehicleId),
                           ),
                         );
                       },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: Color(0xFFFF9800),
-                        padding: EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+                        padding: EdgeInsets.symmetric(
+                          horizontal: 32,
+                          vertical: 12,
+                        ),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(20),
                         ),
@@ -157,53 +166,6 @@ class VehicleDetailsScreen extends StatelessWidget {
             ),
           );
         },
-      ),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: 1, // Customers tab is selected
-        type: BottomNavigationBarType.fixed,
-        selectedItemColor: Color.fromARGB(255, 178, 72, 249),
-        unselectedItemColor: Colors.grey,
-        onTap: (index) {
-          // Handle navigation based on index
-          switch (index) {
-            case 0:
-              Navigator.pushAndRemoveUntil(
-                context,
-                MaterialPageRoute(builder: (context) => HomeNavigator()),
-                (route) => false,
-              );
-              break;
-            case 1:
-              // Navigate to customers section
-              Navigator.pushAndRemoveUntil(
-                context,
-                MaterialPageRoute(builder: (context) => HomeNavigator()),
-                (route) => false,
-              );
-              break;
-            case 2:
-            case 3:
-            case 4:
-              // Show under development message for other tabs
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('🚧 This screen is under development.')),
-              );
-              break;
-          }
-        },
-        items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.dashboard), label: 'Home'),
-          BottomNavigationBarItem(icon: Icon(Icons.group), label: 'Customers'),
-          BottomNavigationBarItem(icon: Icon(Icons.assignment), label: 'Jobs'),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.inventory),
-            label: 'Inventory',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.settings),
-            label: 'Settings',
-          ),
-        ],
       ),
     );
   }
@@ -229,10 +191,7 @@ class VehicleDetailsScreen extends StatelessWidget {
           Expanded(
             child: Text(
               value,
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.black87,
-              ),
+              style: TextStyle(fontSize: 14, color: Colors.black87),
             ),
           ),
         ],
