@@ -31,13 +31,16 @@ class ProcurementController {
   }
 
   // Add a new procurement 
-  Future<String> addProcurement(Procurement procurement) async {
+  Future<Procurement> addProcurement(Procurement procurement) async {
     final newId = await _generateUniqueProcurementId();
+    final withId = procurement.copyWith(id: newId);
+
     await _firestore
         .collection(_collectionName)
         .doc(newId)
-        .set(procurement.copyWith(id: newId).toMap());
-    return newId;
+        .set(withId.toMap());
+
+    return withId; 
   }
 
   // Search procurements by part
@@ -121,19 +124,29 @@ class ProcurementController {
   }
 
   Future<void> markAsReceived(Procurement procurement) async {
+    if (procurement.id == null || procurement.id!.isEmpty) {
+      throw Exception("Procurement ID is missing");
+    }
     try {
-      final partRef = _firestore.collection('Part').doc(procurement.partId);
+      final partQuery = await _firestore
+          .collection('Part')
+          .where('partName', isEqualTo: procurement.partName)
+          .limit(1)
+          .get();
+
+      if (partQuery.docs.isEmpty) {
+        throw Exception("Part with name ${procurement.partName} not found");
+      }
+
+      final partDoc = partQuery.docs.first.reference;
 
       await _firestore.runTransaction((transaction) async {
-        // Get current part data
-        final partDoc = await transaction.get(partRef);
-        if (!partDoc.exists) throw Exception("Part not found");
-
-        final currentQty = (partDoc.data()?['currentQty'] ?? 0) as int;
+        final partSnapshot = await transaction.get(partDoc);
+        final currentQty = (partSnapshot.data()?['currentQty'] ?? 0) as int;
         final newQty = currentQty + procurement.orderQty;
 
         // Update part stock
-        transaction.update(partRef, {'currentQty': newQty});
+        transaction.update(partDoc, {'currentQty': newQty});
 
         // Update procurement status to delivered
         transaction.update(
@@ -148,4 +161,5 @@ class ProcurementController {
       throw Exception("Error marking procurement as received: $e");
     }
   }
+
 }

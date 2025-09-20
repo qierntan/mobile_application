@@ -261,7 +261,10 @@ class _InventoryListScreenState extends State<InventoryListScreen> {
                                     final request = await Navigator.push(
                                       context,
                                       MaterialPageRoute(
-                                        builder: (_) => ProcurementRequestScreen(partId: part.id!),
+                                        builder: (_) => ProcurementRequestScreen(
+                                          partName: part.partName,
+                                          warehouse: part.partWarehouse!,
+                                        ),
                                       ),
                                     );
                                     if (request == true && context.mounted) {

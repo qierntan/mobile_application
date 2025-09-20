@@ -169,7 +169,10 @@ class _PartDetailsScreenState extends State<PartDetailsScreen> {
                   final request = await Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (_) => ProcurementRequestScreen(partId: part.id!),
+                      builder: (_) => ProcurementRequestScreen(
+                        partName: part.partName,
+                        warehouse: part.partWarehouse!,
+                      ),
                     ),
                   );
                   if (request == true && context.mounted) {
