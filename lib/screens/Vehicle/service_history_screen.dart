@@ -18,13 +18,18 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
   bool _sortDescending = true;
   String _filterServiceType = 'All';
   double _minCost = 0;
-  double _maxCost = 1000;
+  double _maxCost = 10000;
   DateTime? _startDate;
   DateTime? _endDate;
   List<String> _availableServiceTypes = ['All'];
 
   @override
   Widget build(BuildContext context) {
+    // Debug logging
+    print('=== SERVICE HISTORY DEBUG ===');
+    print('VehicleId passed to ServiceHistoryScreen: ${widget.vehicleId}');
+    print('VehicleId type: ${widget.vehicleId.runtimeType}');
+    
     return Scaffold(
       backgroundColor: Color(0xFFF5F5F5),
       appBar: AppBar(
@@ -53,6 +58,19 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
             .orderBy('date', descending: true)
             .snapshots(),
         builder: (context, snapshot) {
+          // Debug logging for query results
+          print('StreamBuilder state: ${snapshot.connectionState}');
+          if (snapshot.hasData) {
+            print('Number of service records found: ${snapshot.data!.docs.length}');
+            for (var doc in snapshot.data!.docs) {
+              final data = doc.data() as Map<String, dynamic>;
+              print('Service record ${doc.id}: vehicleId = ${data['vehicleId']}, serviceType = ${data['serviceType']}');
+            }
+          }
+          if (snapshot.hasError) {
+            print('StreamBuilder error: ${snapshot.error}');
+          }
+          
           if (snapshot.hasError) {
             return Center(
               child: Text('Error: ${snapshot.error}'),
@@ -216,6 +234,37 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
   }
 
   Widget _buildServiceHistoryList(List<QueryDocumentSnapshot> documents) {
+    if (documents.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.filter_list_off,
+              size: 64,
+              color: Colors.grey,
+            ),
+            SizedBox(height: 16),
+            Text(
+              'No service records match your filters',
+              style: TextStyle(
+                fontSize: 18,
+                color: Colors.grey,
+              ),
+            ),
+            SizedBox(height: 8),
+            Text(
+              'Try adjusting your filter settings',
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey[600],
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    
     return ListView.builder(
       padding: EdgeInsets.all(20),
       itemCount: documents.length,
@@ -398,14 +447,14 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
            _startDate != null ||
            _endDate != null ||
            _minCost > 0 ||
-           _maxCost < 1000;
+           _maxCost < 10000;
   }
 
   String _getActiveFiltersText() {
     List<String> filters = [];
     if (_filterServiceType != 'All') filters.add('Type: $_filterServiceType');
     if (_startDate != null || _endDate != null) filters.add('Date range');
-    if (_minCost > 0 || _maxCost < 1000) filters.add('Cost: RM $_minCost - RM $_maxCost');
+    if (_minCost > 0 || _maxCost < 10000) filters.add('Cost: RM $_minCost - RM $_maxCost');
     return filters.join(', ');
   }
 
@@ -413,7 +462,7 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
     setState(() {
       _filterServiceType = 'All';
       _minCost = 0;
-      _maxCost = 1000;
+      _maxCost = 10000;
       _startDate = null;
       _endDate = null;
     });
@@ -533,7 +582,7 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
                     RangeSlider(
                       values: RangeValues(_minCost, _maxCost),
                       min: 0,
-                      max: 1000,
+                      max: 10000,
                       divisions: 20,
                       labels: RangeLabels('RM ${_minCost.round()}', 'RM ${_maxCost.round()}'),
                       onChanged: (RangeValues values) {
@@ -625,7 +674,18 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
   }
 
   List<QueryDocumentSnapshot> _filterAndSortDocuments(List<QueryDocumentSnapshot> documents) {
-    // Extract unique service types for filter dropdown
+    print('=== FILTER AND SORT DEBUG ===');
+    print('Input documents count: ${documents.length}');
+    print('Current filter settings:');
+    print('  - Sort by: $_sortBy');
+    print('  - Sort descending: $_sortDescending');
+    print('  - Filter service type: $_filterServiceType');
+    print('  - Min cost: $_minCost');
+    print('  - Max cost: $_maxCost');
+    print('  - Start date: $_startDate');
+    print('  - End date: $_endDate');
+    
+    // Extract unique service types for filter options
     Set<String> serviceTypes = {'All'};
     for (var doc in documents) {
       final data = doc.data() as Map<String, dynamic>;
@@ -637,16 +697,26 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
     // Apply filters
     List<QueryDocumentSnapshot> filteredDocs = documents.where((doc) {
       final data = doc.data() as Map<String, dynamic>;
+      print('Filtering document ${doc.id}:');
+      print('  - Service type: ${data['serviceType']}');
+      print('  - Cost: ${data['cost']}');
+      print('  - Date: ${data['date']}');
       
       // Service type filter
       if (_filterServiceType != 'All') {
         final serviceType = data['serviceType'] ?? 'Service';
-        if (serviceType != _filterServiceType) return false;
+        if (serviceType != _filterServiceType) {
+          print('  ❌ Filtered out by service type: $serviceType != $_filterServiceType');
+          return false;
+        }
       }
       
       // Cost filter
       final cost = (data['cost'] ?? 0.0).toDouble();
-      if (cost < _minCost || cost > _maxCost) return false;
+      if (cost < _minCost || cost > _maxCost) {
+        print('  ❌ Filtered out by cost: $cost not in range $_minCost - $_maxCost');
+        return false;
+      }
       
       // Date filter
       if (_startDate != null || _endDate != null) {
@@ -660,12 +730,21 @@ class _ServiceHistoryScreenState extends State<ServiceHistoryScreen> {
           date = DateTime.now();
         }
         
-        if (_startDate != null && date.isBefore(_startDate!)) return false;
-        if (_endDate != null && date.isAfter(_endDate!.add(Duration(days: 1)))) return false;
+        if (_startDate != null && date.isBefore(_startDate!)) {
+          print('  ❌ Filtered out by start date: $date < $_startDate');
+          return false;
+        }
+        if (_endDate != null && date.isAfter(_endDate!.add(Duration(days: 1)))) {
+          print('  ❌ Filtered out by end date: $date > $_endDate');
+          return false;
+        }
       }
       
+      print('  ✅ Document passed all filters');
       return true;
     }).toList();
+    
+    print('Filtered documents count: ${filteredDocs.length}');
 
     // Apply sorting
     filteredDocs.sort((a, b) {
