@@ -151,8 +151,10 @@ class CustomerListScreenState extends State<CustomerListScreen> {
                   return Center(child: CircularProgressIndicator());
                 }
 
-                // Use filtered customers if search is active, otherwise show all customers
-                final displayCustomers = _searchQuery.isNotEmpty ? _filteredCustomers : customers;
+                // Apply sorting to all customers, whether filtered or not
+                final displayCustomers = _searchQuery.isNotEmpty 
+                    ? _filteredCustomers 
+                    : _customerController.sortCustomers(customers, _sortOrder);
 
                 if (displayCustomers.isEmpty && _searchQuery.isNotEmpty) {
                   return Center(child: Text('No customers found.'));
