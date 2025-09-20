@@ -62,6 +62,10 @@ class _WorkSchedulerScreenState extends State<WorkSchedulerScreen> {
 
   Future<void> _assignJob(String jobId, String? mechanicName) async {
     try {
+      print('=== ASSIGN JOB START ===');
+      print('Job ID: $jobId');
+      print('Mechanic Name: $mechanicName');
+      
       // If assigning a mechanic, check for time conflicts first
       if (mechanicName != null && mechanicName.isNotEmpty) {
         // Get the job details first to check for time conflicts
@@ -78,21 +82,28 @@ class _WorkSchedulerScreenState extends State<WorkSchedulerScreen> {
         }
         
         final jobData = jobDoc.data()!;
-        final jobTime = jobData['time'];
+        final jobTime = jobData['time'] ?? jobData['time ']; // Check both fields
+        
+        print('Job time from database: $jobTime');
+        print('Job time type: ${jobTime.runtimeType}');
         
         if (jobTime != null) {
           // Get mechanicId from mechanicName
           String? mechanicId = await JobConflictService.getMechanicIdFromName(mechanicName);
+          print('Resolved mechanic ID: $mechanicId');
           
           if (mechanicId != null) {
             // Check for time conflicts
+            print('Running conflict check for job $jobId, mechanic $mechanicId, time $jobTime');
             final hasConflict = await JobConflictService.checkTimeConflict(
               currentJobId: jobId,
               mechanicId: mechanicId,
               jobTime: jobTime,
             );
+            print('Conflict check result: $hasConflict');
             
             if (hasConflict) {
+              print('CONFLICT DETECTED - Blocking assignment');
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
                   content: Text('Error: This mechanic already has a job at this time slot'),
@@ -102,6 +113,15 @@ class _WorkSchedulerScreenState extends State<WorkSchedulerScreen> {
               return;
             }
           }
+        } else {
+          // If no time is set, show a warning
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Warning: This job has no scheduled time. Please set a time before assigning a mechanic.'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+          return;
         }
       }
       
@@ -114,6 +134,9 @@ class _WorkSchedulerScreenState extends State<WorkSchedulerScreen> {
         mechanicId = await JobConflictService.getMechanicIdFromName(mechanicName);
       }
       
+      print('Updating job in database...');
+      print('Update data: mechanicName=${mechanicName ?? ''}, mechanicId=${mechanicId ?? ''}, status=$status');
+      
       await FirebaseFirestore.instance
           .collection('Jobs')
           .doc(jobId)
@@ -123,6 +146,8 @@ class _WorkSchedulerScreenState extends State<WorkSchedulerScreen> {
         'status': status,
       });
       
+      print('Job updated successfully in database');
+      
       String message = (mechanicName == null || mechanicName.isEmpty) 
           ? 'Job unassigned successfully!' 
           : 'Job assigned to $mechanicName successfully!';
@@ -130,6 +155,8 @@ class _WorkSchedulerScreenState extends State<WorkSchedulerScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(message)),
       );
+      
+      print('=== ASSIGN JOB END ===');
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Failed to update job assignment: $e')),

@@ -13,6 +13,7 @@ class JobConflictService {
       print('Current job ID: "$currentJobId"');
       print('Selected mechanic: "$mechanicId"');
       print('Selected time: $jobTime');
+      print('Selected time type: ${jobTime.runtimeType}');
       
       // Force fresh query from database (no cache)
       QuerySnapshot allJobsSnapshot;
@@ -80,12 +81,16 @@ class JobConflictService {
         }
         
         // Check if same time and same mechanic
-        bool sameTime = otherJobDateTime.isAtSameMomentAs(selectedDateTime);
+        // Use a more robust time comparison that accounts for potential timezone issues
+        bool sameTime = _isSameTimeSlot(otherJobDateTime, selectedDateTime);
         bool sameMechanic = jobMechanicId == mechanicId;
         
         print('→ Job ${doc.id}: sameTime=$sameTime, sameMechanic=$sameMechanic');
-        print('  → Job time: $otherJobDateTime vs Selected time: $selectedDateTime');
+        print('  → Job time: $otherJobDateTime (${otherJobDateTime.millisecondsSinceEpoch})');
+        print('  → Selected time: $selectedDateTime (${selectedDateTime.millisecondsSinceEpoch})');
+        print('  → Time difference: ${(otherJobDateTime.millisecondsSinceEpoch - selectedDateTime.millisecondsSinceEpoch).abs()}ms');
         print('  → Job mechanic: "$jobMechanicId" vs Selected mechanic: "$mechanicId"');
+        print('  → Mechanic match: ${jobMechanicId == mechanicId}');
         
         if (sameTime && sameMechanic) {
           conflictCount++;
@@ -224,7 +229,7 @@ class JobConflictService {
         }
         
         // Check if same time
-        bool sameTime = otherJobDateTime.isAtSameMomentAs(selectedDateTime);
+        bool sameTime = _isSameTimeSlot(otherJobDateTime, selectedDateTime);
         
         print('→ Job ${doc.id}: sameTime=$sameTime');
         print('  → Job time: $otherJobDateTime vs Selected time: $selectedDateTime');
@@ -288,5 +293,37 @@ class JobConflictService {
       print('Error getting available mechanics: $e');
       return []; // Return empty list if error occurs
     }
+  }
+
+  /// Helper method to check if two DateTime objects represent the same time slot
+  /// This accounts for potential timezone differences and small time variations
+  static bool _isSameTimeSlot(DateTime time1, DateTime time2) {
+    // Convert both times to UTC for comparison
+    final utc1 = time1.toUtc();
+    final utc2 = time2.toUtc();
+    
+    // Check if they're at the same moment (exact match)
+    if (utc1.isAtSameMomentAs(utc2)) {
+      return true;
+    }
+    
+    // Check if they're within 1 minute of each other (handles small time differences)
+    final timeDifference = (utc1.millisecondsSinceEpoch - utc2.millisecondsSinceEpoch).abs();
+    if (timeDifference <= 60000) { // 1 minute = 60,000 milliseconds
+      return true;
+    }
+    
+    // Also check if they're within the same hour (in case of timezone conversion issues)
+    final hour1 = utc1.hour;
+    final hour2 = utc2.hour;
+    final day1 = utc1.day;
+    final day2 = utc2.day;
+    final month1 = utc1.month;
+    final month2 = utc2.month;
+    final year1 = utc1.year;
+    final year2 = utc2.year;
+    
+    // Same year, month, day, and hour
+    return year1 == year2 && month1 == month2 && day1 == day2 && hour1 == hour2;
   }
 }
